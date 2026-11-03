@@ -15,7 +15,9 @@ Experimental custom integration built by reverse engineering the user-supplied J
 - [API guide](docs/API.md), [43-operation endpoint inventory](docs/endpoints.md), [309-definition schema catalog](docs/schema-catalog.md), [OpenAPI 3.1 reference](docs/openapi.json), and [humidity investigation](docs/HUMIDITY.md).
 - [Home Assistant device/entity structure](docs/HA_STRUCTURE.md), including what remains unfinished for energy monitoring.
 
-**Status (prototype 0.2.1):** 48 protocol/model/topology tests pass, with protocol requests exercised against a local mock server. Live magic-link verification, account lookup, empty-system discovery, air-quality classification, and token refresh returned HTTP 200 with matching recovered response schemas on November 3, 2026. Formatting, linting, and Python syntax are checked. Real Home Assistant loading and installed-device responses/behavior still require testing. See [validation scope](docs/VALIDATION.md).
+**Status (prototype 0.3.0):** 62 protocol/model/topology/polling tests pass, with protocol requests exercised against a local mock server. Live magic-link verification, account lookup, empty-system discovery, air-quality classification, and token refresh returned HTTP 200 with matching recovered response schemas on November 3, 2026. Formatting, linting, and Python syntax are checked. Real Home Assistant loading and installed-device responses/behavior still require testing. See [validation scope](docs/VALIDATION.md).
+
+Version 0.3.0 separates routine readings from configuration discovery. Discovery runs at startup/reload and through **Refresh configuration** in Jetson Home's options menu. See [polling and manual discovery](docs/POLLING.md).
 
 Version 0.2.1 bundles Jetson's official app icon and website wordmark, with normal/high-resolution images and a dark-theme wordmark. Home Assistant loads these from the integration's `brand` folder. When updating an existing install, copy the complete `jetson_home` folder, restart Home Assistant, and refresh the browser. See [image sources](custom_components/jetson_home/brand/README.md).
 
@@ -34,11 +36,15 @@ For a manual install, copy `custom_components/jetson_home` into your Home Assist
 5. Once equipment is installed, finish Wi-Fi setup and account association in Jetson's official app. This integration does not provision hardware.
 6. Check reported temperatures and modes against the official app before relying on automations. Use one ordinary change at a time and confirm the app and equipment respond.
 
-An account with no systems can be added before installation. Polling discovers reported systems, boards/hubs, equipment, zones, and supported features. Devices can be registered from inventory even when their numeric telemetry is not available.
+An account with no systems can be added before installation. After commissioning, choose **Refresh configuration** from Jetson Home's options menu, or reload the integration, to discover systems, boards/hubs, equipment, and zones. Devices can be registered from inventory even when their numeric telemetry is not available.
 
 Account setup creates a separate entry and credential set for each email address. Robust handling of account-email changes and two accounts sharing the same physical system is still pending; configure each system through one account for this prototype.
 
-Polling defaults to 30 seconds and can be changed to 30–900 seconds in the integration's options. A normal cycle makes `1 + 3 × system_count + zone_count + air_quality_zone_count` requests: systems, each system's boards/equipment/zones, each zone's status, and air quality for zones associated with a reported TEMCO-AQM. Authentication renewal can add requests. API outages make entities unavailable; device communication can still fail even when cloud reads succeed. HTTP 200 with `result: "unreachable"` is treated as a failed command. Optional inventory or air-quality errors are isolated from climate updates. Commands are not optimistically reported as physical changes.
+Jetson Home's options menu has **Polling interval** and **Refresh configuration** actions. Routine polling defaults to 30 seconds and can be changed to 30–900 seconds. It reads known zones' status and eligible air quality: `zone_count + air_quality_zone_count` requests per ordinary cycle. Connection status is updated separately on the next poll after five minutes, adding `1 + system_count` reads for configured systems' health/equipment. Those checks update liveness only; they do not discover or rename hardware or change zone membership.
+
+Startup, reload, and **Refresh configuration** perform a full scan: `1 + 3 × system_count + zone_count + air_quality_zone_count` reads. An empty account makes no background discovery requests. For one zone with an air-quality monitor, an ordinary update uses two reads, a connectivity update uses four, and a full configuration refresh uses six. Authentication renewal can add requests. See [request schedules and failure behavior](docs/POLLING.md).
+
+API outages make affected entities unavailable; device communication can still fail even when cloud reads succeed. HTTP 200 with `result: "unreachable"` is treated as a failed command. Optional inventory or air-quality errors are isolated from climate updates. Commands are not optimistically reported as physical changes.
 
 ## Installed monitors
 

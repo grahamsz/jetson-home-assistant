@@ -3,13 +3,18 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from .polling import CONNECTIVITY_INTERVAL
+
 
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     coordinator = entry.runtime_data
     return {
-        "integration_version": "0.2.1",
+        "integration_version": "0.3.0",
         "last_update_success": coordinator.last_update_success,
         "scan_interval_seconds": coordinator.update_interval.total_seconds(),
+        "connectivity_interval_seconds": CONNECTIVITY_INTERVAL,
+        "configuration_discovery": "startup_or_manual",
+        "system_health_available": coordinator.data.system_health_error is None,
         "zones": [
             {
                 "online": zone.online,

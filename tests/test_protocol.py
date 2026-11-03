@@ -8,7 +8,14 @@ from pathlib import Path
 
 import aiohttp
 from aiohttp import web
-from protocol_loader import api, models, sample_air_quality, sample_equipment, sample_status
+from protocol_loader import (
+    api,
+    models,
+    polling,
+    sample_air_quality,
+    sample_equipment,
+    sample_status,
+)
 
 
 class ClientTests(unittest.IsolatedAsyncioTestCase):
@@ -394,6 +401,237 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         snapshot = await self.client.get_snapshot()
         self.assertIsNotNone(snapshot.systems["s1"].equipment_error)
         self.assertEqual(snapshot.zones["s1:z1"].current_temperature, 21.25)
+
+    async def test_regular_updates_read_only_known_zone_status_and_air_quality(self):
+        previous = await self.client.get_snapshot()
+        self.calls.clear()
+        self.status["features"]["ambientTemperature"]["currentTemperature"] = 23
+        self.air_quality["current"]["co2"]["value"] = 700
+        current = await self.client.get_updates(previous)
+        self.assertEqual(
+            [call[1] for call in self.calls], ["/v1/zones/z1/status", "/v1/zones/z1/airQuality"]
+        )
+        self.assertEqual(current.zones["s1:z1"].current_temperature, 23)
+        self.assertEqual(current.zones["s1:z1"].pollutant("co2"), 700)
+        self.assertEqual(previous.zones["s1:z1"].current_temperature, 21.25)
+        self.assertEqual(previous.zones["s1:z1"].pollutant("co2"), 650)
+
+    async def test_regular_updates_without_air_monitor_read_only_status(self):
+        self.equipment = [item for item in self.equipment if item["type"] != "Sensor"]
+        previous = await self.client.get_snapshot()
+        self.calls.clear()
+        await self.client.get_updates(previous)
+        self.assertEqual([call[1] for call in self.calls], ["/v1/zones/z1/status"])
+
+    async def test_air_quality_failure_does_not_reuse_previous_reading(self):
+        previous = await self.client.get_snapshot()
+
+        async def behavior(request, body):
+            if request.path.endswith("/airQuality"):
+                return web.json_response({}, status=503)
+
+        self.behavior = behavior
+        failed = await self.client.get_updates(previous)
+        self.assertEqual(failed.zones["s1:z1"].current_temperature, 21.25)
+        self.assertIsNone(failed.zones["s1:z1"].pollutant("co2"))
+        self.assertIn("s1:z1", failed.air_quality_errors)
+        self.behavior = None
+        recovered = await self.client.get_updates(failed)
+        self.assertFalse(recovered.air_quality_errors)
+        self.assertEqual(recovered.zones["s1:z1"].pollutant("co2"), 650)
+
+    async def test_access_changes_take_effect_without_configuration_discovery(self):
+        previous = await self.client.get_snapshot()
+        self.air_quality["access"] = "limited"
+        current = await self.client.get_updates(previous)
+        self.assertEqual(current.zones["s1:z1"].air_quality_access, "limited")
+        self.assertIsNone(current.zones["s1:z1"].pollutant("co2"))
+        self.assertEqual(previous.zones["s1:z1"].pollutant("co2"), 650)
+
+    async def test_connectivity_refresh_does_not_change_discovered_configuration(self):
+        previous = await self.client.get_snapshot()
+        self.calls.clear()
+        for item in self.equipment:
+            item.update(name="Changed name", zoneIds=["new-zone"], connectionStatus="Disconnected")
+        self.equipment.append({"id": "new-equipment", "connectionStatus": "Connected"})
+
+        async def behavior(request, body):
+            if request.path == "/v1/systems":
+                return web.json_response(
+                    {
+                        "systems": [
+                            {
+                                "id": "s1",
+                                "name": "Changed system",
+                                "health": {"connectionStatus": "Disconnected"},
+                            },
+                            {"id": "new-system", "name": "New system"},
+                        ]
+                    }
+                )
+
+        self.behavior = behavior
+        current = await self.client.get_updates(previous, refresh_connectivity=True)
+        self.assertEqual(set(current.systems), {"s1"})
+        self.assertEqual(set(current.zones), {"s1:z1"})
+        self.assertEqual(current.systems["s1"].name, "Test system")
+        self.assertEqual(len(current.systems["s1"].equipment), 3)
+        self.assertEqual(current.systems["s1"].equipment[1]["zoneIds"], ["z1"])
+        self.assertEqual(current.systems["s1"].equipment[1]["name"], "Return air monitor")
+        self.assertEqual(current.systems["s1"].equipment[1]["connectionStatus"], "Disconnected")
+        self.assertFalse(current.zones["s1:z1"].online)
+        self.assertTrue(previous.zones["s1:z1"].online)
+        self.assertEqual(current.zones["s1:z1"].pollutant("co2"), 650)
+        self.assertEqual(
+            [call[1] for call in self.calls],
+            [
+                "/v1/systems",
+                "/v1/systems/s1/equipment",
+                "/v1/zones/z1/status",
+                "/v1/zones/z1/airQuality",
+            ],
+        )
+
+    async def test_missing_equipment_connection_becomes_unknown_until_discovery(self):
+        previous = await self.client.get_snapshot()
+        self.equipment = []
+        current = await self.client.get_updates(previous, refresh_connectivity=True)
+        self.assertEqual(len(current.systems["s1"].equipment), 3)
+        self.assertTrue(
+            all(item["connectionStatus"] == "Unknown" for item in current.systems["s1"].equipment)
+        )
+
+    async def test_connectivity_failure_keeps_configuration_and_zone_readings(self):
+        previous = await self.client.get_snapshot()
+
+        async def behavior(request, body):
+            if request.path in ("/v1/systems", "/v1/systems/s1/equipment"):
+                return web.json_response({}, status=503)
+
+        self.behavior = behavior
+        current = await self.client.get_updates(previous, refresh_connectivity=True)
+        self.assertIsNotNone(current.system_health_error)
+        self.assertIsNotNone(current.systems["s1"].equipment_error)
+        self.assertIsNone(current.zones["s1:z1"].connection_status)
+        self.assertEqual(current.zones["s1:z1"].current_temperature, 21.25)
+        self.assertEqual(models.build_devices(current), models.build_devices(previous))
+
+    async def test_auth_failure_during_connectivity_refresh_is_not_ignored(self):
+        previous = await self.client.get_snapshot()
+
+        async def behavior(request, body):
+            if request.path == "/v1/systems":
+                return web.json_response({}, status=401)
+
+        self.behavior = behavior
+        with self.assertRaises(api.JetsonAuthError):
+            await self.client.get_updates(previous, refresh_connectivity=True)
+
+    async def test_poller_discovers_once_and_refreshes_connectivity_every_five_minutes(self):
+        now = [0.0]
+        poller = polling.JetsonPoller(self.client, clock=lambda: now[0])
+        await poller.refresh()
+        self.assertEqual(len(self.calls), 6)
+        for moment, expected in ((30, 2), (299, 2), (300, 4), (330, 2), (600, 4)):
+            now[0] = moment
+            self.calls.clear()
+            await poller.refresh()
+            self.assertEqual(len(self.calls), expected, moment)
+            self.assertFalse(any(call[1].endswith(("/boards", "/zones")) for call in self.calls))
+        self.assertEqual(poller.configuration_revision, 1)
+
+    async def test_manual_configuration_refresh_finds_new_zones_and_removals(self):
+        poller = polling.JetsonPoller(self.client)
+        await poller.refresh()
+
+        async def behavior(request, body):
+            if request.path == "/v1/systems/s1/zones":
+                return web.json_response({"zones": [{"id": "z2", "name": "New zone"}]})
+            if request.path == "/v1/zones/z2/status":
+                return web.json_response(self.status)
+
+        self.behavior = behavior
+        self.assertEqual(set((await poller.refresh()).zones), {"s1:z1"})
+        updated = await poller.refresh(discover=True)
+        self.assertEqual(set(updated.zones), {"s1:z2"})
+        self.assertEqual(poller.configuration_revision, 2)
+        self.calls.clear()
+        self.assertEqual(set((await poller.refresh()).zones), {"s1:z2"})
+        self.assertEqual([call[1] for call in self.calls], ["/v1/zones/z2/status"])
+
+    async def test_failed_configuration_refresh_keeps_last_good_configuration(self):
+        poller = polling.JetsonPoller(self.client)
+        previous = await poller.refresh()
+
+        async def behavior(request, body):
+            if request.path.endswith("/zones"):
+                return web.json_response({}, status=503)
+
+        self.behavior = behavior
+        with self.assertRaises(api.JetsonError):
+            await poller.refresh(discover=True)
+        self.assertIs(poller.snapshot, previous)
+        self.assertEqual(poller.configuration_revision, 1)
+        self.calls.clear()
+        current = await poller.refresh()
+        self.assertEqual(set(current.zones), {"s1:z1"})
+        self.assertEqual(len(self.calls), 2)
+
+    async def test_failed_measurement_refresh_does_not_mutate_last_good_state(self):
+        poller = polling.JetsonPoller(self.client)
+        previous = await poller.refresh()
+        self.status = {}
+        with self.assertRaises(api.JetsonError):
+            await poller.refresh()
+        self.assertIs(poller.snapshot, previous)
+        self.assertEqual(previous.zones["s1:z1"].current_temperature, 21.25)
+
+    async def test_empty_configuration_does_not_poll_discovery_in_background(self):
+        async def empty(request, body):
+            return web.json_response({"systems": []})
+
+        self.behavior = empty
+        now = [0.0]
+        poller = polling.JetsonPoller(self.client, clock=lambda: now[0])
+        self.assertFalse((await poller.refresh()).systems)
+        self.behavior = None
+        self.calls.clear()
+        now[0] = 1000
+        self.assertFalse((await poller.refresh()).systems)
+        self.assertEqual(self.calls, [])
+        self.assertEqual(set((await poller.refresh(discover=True)).systems), {"s1"})
+
+    async def test_configuration_refresh_waits_for_in_progress_measurement_poll(self):
+        poller = polling.JetsonPoller(self.client)
+        await poller.refresh()
+        entered = asyncio.Event()
+        release = asyncio.Event()
+        blocked = False
+
+        async def behavior(request, body):
+            nonlocal blocked
+            if request.path == "/v1/zones/z1/status" and not blocked:
+                blocked = True
+                entered.set()
+                await release.wait()
+
+        self.behavior = behavior
+        self.calls.clear()
+        update = asyncio.create_task(poller.refresh())
+        await asyncio.wait_for(entered.wait(), timeout=2)
+        discover = asyncio.create_task(poller.refresh(discover=True))
+        try:
+            await asyncio.sleep(0)
+            self.assertEqual([call[1] for call in self.calls], ["/v1/zones/z1/status"])
+        finally:
+            release.set()
+        _, latest = await asyncio.gather(update, discover)
+        self.assertIs(poller.snapshot, latest)
+        self.assertEqual(poller.configuration_revision, 2)
+        self.assertEqual(
+            [call[1] for call in self.calls[:3]],
+            ["/v1/zones/z1/status", "/v1/zones/z1/airQuality", "/v1/systems"],
+        )
 
 
 class ModelTests(unittest.TestCase):

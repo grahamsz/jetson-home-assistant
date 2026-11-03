@@ -14,6 +14,7 @@ from .api import JetsonAuthError, JetsonClient, JetsonError
 from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .devices import sync_devices
 from .models import Snapshot, Zone
+from .polling import JetsonPoller
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,18 +31,32 @@ class JetsonCoordinator(DataUpdateCoordinator[Snapshot]):
             ),
         )
         self.client = client
+        self.poller = JetsonPoller(client)
         self.command_lock = asyncio.Lock()
         self.device_infos = {}
+        self._registered_revision = 0
+
+    def _sync_configuration(self, snapshot: Snapshot) -> None:
+        if self._registered_revision != self.poller.configuration_revision:
+            self.device_infos = sync_devices(self.hass, self.config_entry, snapshot)
+            self._registered_revision = self.poller.configuration_revision
 
     async def _async_update_data(self) -> Snapshot:
         try:
-            snapshot = await self.client.get_snapshot()
-            self.device_infos = sync_devices(self.hass, self.config_entry, snapshot)
+            snapshot = await self.poller.refresh()
+            self._sync_configuration(snapshot)
             return snapshot
         except JetsonAuthError as err:
             raise ConfigEntryAuthFailed("Sign in to Jetson Home again") from err
         except JetsonError as err:
             raise UpdateFailed(str(err)) from err
+
+    async def async_refresh_configuration(self) -> Snapshot:
+        """Rediscover this account and notify entity platforms without a reload."""
+        snapshot = await self.poller.refresh(discover=True)
+        self._sync_configuration(snapshot)
+        self.async_set_updated_data(snapshot)
+        return snapshot
 
     async def command(self, method: str, zone: Zone, value: Any) -> None:
         async with self.command_lock:

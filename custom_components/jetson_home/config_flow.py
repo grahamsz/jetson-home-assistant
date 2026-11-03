@@ -119,6 +119,39 @@ class JetsonConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class JetsonOptionsFlow(config_entries.OptionsFlowWithReload):
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
+        return self.async_show_menu(
+            step_id="init", menu_options=["polling", "refresh_configuration"]
+        )
+
+    async def async_step_refresh_configuration(self, user_input: dict[str, Any] | None = None):
+        errors = {}
+        coordinator = getattr(self.config_entry, "runtime_data", None)
+        if (
+            self.config_entry.state is not config_entries.ConfigEntryState.LOADED
+            or coordinator is None
+        ):
+            errors["base"] = "not_loaded"
+        else:
+            try:
+                snapshot = await coordinator.async_refresh_configuration()
+            except JetsonAuthError:
+                self.config_entry.async_start_reauth(self.hass)
+                return self.async_abort(reason="reauth_required")
+            except JetsonError:
+                errors["base"] = "cannot_refresh"
+            else:
+                if any(
+                    system.equipment_error or system.boards_error
+                    for system in snapshot.systems.values()
+                ):
+                    errors["base"] = "refresh_incomplete"
+                else:
+                    return self.async_abort(reason="configuration_refreshed")
+        return self.async_show_form(
+            step_id="refresh_configuration", data_schema=probatio.Schema({}), errors=errors
+        )
+
+    async def async_step_polling(self, user_input: dict[str, Any] | None = None):
         errors = {}
         if user_input is not None:
             value = user_input.get(CONF_SCAN_INTERVAL)
@@ -128,10 +161,12 @@ class JetsonOptionsFlow(config_entries.OptionsFlowWithReload):
                 and 30 <= value <= 900
                 and value == int(value)
             ):
-                return self.async_create_entry(title="", data={CONF_SCAN_INTERVAL: int(value)})
+                return self.async_create_entry(
+                    title="", data={**self.config_entry.options, CONF_SCAN_INTERVAL: int(value)}
+                )
             errors["base"] = "invalid_interval"
         return self.async_show_form(
-            step_id="init",
+            step_id="polling",
             errors=errors,
             data_schema=probatio.Schema(
                 {

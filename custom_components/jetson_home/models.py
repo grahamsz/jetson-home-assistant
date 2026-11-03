@@ -173,6 +173,7 @@ class Snapshot:
     systems: dict[str, System] = field(default_factory=dict)
     zones: dict[str, Zone] = field(default_factory=dict)
     air_quality_errors: dict[str, str] = field(default_factory=dict)
+    system_health_error: str | None = None
 
 
 @dataclass(frozen=True)

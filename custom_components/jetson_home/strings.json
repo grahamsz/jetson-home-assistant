@@ -29,12 +29,32 @@
     }
   },
   "options": {
-    "error": {"invalid_interval": "Enter a whole number from 30 to 900 seconds."},
+    "error": {
+      "invalid_interval": "Enter a whole number from 30 to 900 seconds.",
+      "cannot_refresh": "Jetson could not be reached or returned an unexpected response. The previous configuration is kept. Submit to retry.",
+      "refresh_incomplete": "Some equipment or hub details could not be refreshed. Available readings continue to update. Submit to retry.",
+      "not_loaded": "Load or reload the Jetson Home integration before refreshing its configuration."
+    },
+    "abort": {
+      "configuration_refreshed": "Jetson Home configuration refreshed. Systems, hubs, equipment, and zones have been checked for changes.",
+      "reauth_required": "Sign in to Jetson Home again, then refresh configuration."
+    },
     "step": {
       "init": {
         "title": "Jetson Home options",
-        "description": "Poll the cloud every 30 to 900 seconds. Updates include installed equipment, zone status, and available air-quality readings.",
+        "menu_options": {
+          "polling": "Polling interval",
+          "refresh_configuration": "Refresh configuration"
+        }
+      },
+      "polling": {
+        "title": "Polling interval",
+        "description": "Update known zones' thermostat, temperature, humidity, and air-quality readings every 30 to 900 seconds. Connection status is checked with the next update once five minutes have passed. Use Refresh configuration after changing installed equipment or zones.",
         "data": {"scan_interval": "Polling interval (seconds)"}
+      },
+      "refresh_configuration": {
+        "title": "Refresh configuration",
+        "description": "Check for added, removed, or renamed systems, hubs, equipment, and zones. Your sign-in and polling settings are kept."
       }
     }
   }

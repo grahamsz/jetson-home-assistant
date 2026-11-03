@@ -2,7 +2,7 @@
 
 ## Completed on November 3, 2026
 
-- **48 passing tests** of the independent protocol client, data model, and device topology. Protocol requests run against a local HTTP mock service.
+- **62 passing tests** of the independent protocol client, data model, device topology, and polling scheduler. Protocol requests run against a local HTTP mock service.
 - Covered real HTTP methods/bodies, discovery, optional features, empty accounts, legacy temperature fields, auth exchange, expiry, rotating refresh tokens, parallel refresh, one-time 401 retry, persistent 401, permission errors, 429 handling, redirects, malformed JSON, schema drift, invalid inputs, device-unreachable results, and no replay of failed writes.
 - Checked humidity-control eligibility against the exact app condition plus valid advertised target limits.
 - Checked all reconstructed schema references and key HVAC/humidity enums; no unresolved constructor/method placeholders or extraction failures.
@@ -11,6 +11,7 @@
 - Cross-checked Home Assistant 2026.10's public climate/humidifier properties, Probatio config-flow schemas, coordinator entry handling, and automatic options-reload API against the project's published source/docs.
 - Added hardware-inventory and air-quality tests for stable gateway/device/zone identities, cross-system ID separation, parent fallback/cycles, restricted access, null measurements, and optional endpoint failures. Energy-monitor metadata is tested without claiming consumption telemetry.
 - Cross-checked `via_device_id` registry linking, sensor device classes, and the current density/ratio unit enums against Home Assistant 2026.10's source.
+- Checked startup versus measurement request counts, five-minute connectivity scheduling, explicit discovery of new/removed zones, unchanged topology during health reads, failure rollback, access changes, empty-account background silence, and serialization of overlapping measurement/configuration requests. The options-menu wiring still needs a live HA runtime check.
 
 Fixtures are invented from recovered types, not captured from a physical device. The tests deliberately load the protocol modules without Home Assistant. Home Assistant runtime setup, config-flow UI, entity/platform loading, and real equipment communication remain untested.
 
@@ -45,6 +46,7 @@ The account has no commissioned systems, so no system-specific board/equipment/z
 10. Check manual changes while a native schedule or vacation is active. Determine override duration and resume behavior before creating automations that depend on them.
 11. Confirm the hub, air-quality monitor, and energy monitor appear as separate devices with the reported model/serial and gateway links. Zone aggregate entities should remain on their zone service device.
 12. Compare permitted CO₂/PM2.5/TVOC values and units with the app. Check limited Jetson Care access, missing readings, and connectivity behavior. Energy W/kWh entities remain pending a verified read endpoint and should not appear as fabricated measurements.
+13. Open Jetson Home's options menu and select **Refresh configuration**. Confirm the scan completes without requesting another email or changing the polling interval. After adding/renaming equipment or a zone in Jetson, confirm routine readings leave the configured topology unchanged until a manual refresh or reload. Compare ordinary zone-only traffic with the separate connectivity reads after five minutes.
 
 ## Useful non-secret evidence
 

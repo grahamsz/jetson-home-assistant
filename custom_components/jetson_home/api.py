@@ -3,6 +3,7 @@
 import asyncio
 import time
 from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import parse_qs, quote, urlsplit
@@ -266,6 +267,60 @@ class JetsonClient:
             )
             snapshot.systems[system_id] = system
         snapshot.zones = await self.get_zones(systems)
+        await self._update_air_quality(snapshot)
+        return snapshot
+
+    async def get_updates(
+        self, previous: Snapshot, *, refresh_connectivity: bool = False
+    ) -> Snapshot:
+        """Refresh known zones without changing the discovered configuration."""
+        snapshot = deepcopy(previous)
+        snapshot.air_quality_errors.clear()
+        if refresh_connectivity and snapshot.systems:
+            await self._update_connectivity(snapshot)
+        for zone in snapshot.zones.values():
+            status = await self.request("GET", f"/v1/zones/{quote(zone.zone_id, safe='')}/status")
+            if not isinstance(status.get("features"), dict):
+                raise JetsonError("Zone status is missing its features object")
+            zone.status = status
+            zone.air_quality = None
+        await self._update_air_quality(snapshot)
+        return snapshot
+
+    async def _update_connectivity(self, snapshot: Snapshot) -> None:
+        """Read liveness for configured objects, retaining their identity/metadata."""
+        try:
+            systems = self._items(await self.request("GET", "/v1/systems"), "systems")
+            current = {self._id(item): item for item in systems}
+        except (JetsonAuthError, JetsonRateLimitError):
+            raise
+        except JetsonError as err:
+            # A health read failure is not proof of a disconnected system. Zone
+            # measurements can still be read; command replies confirm reachability.
+            for zone in snapshot.zones.values():
+                zone.connection_status = None
+            snapshot.system_health_error = str(err)
+        else:
+            snapshot.system_health_error = None
+            for zone in snapshot.zones.values():
+                zone.connection_status = (
+                    mapping(current[zone.system_id].get("health")).get("connectionStatus")
+                    if zone.system_id in current
+                    else "Unknown"
+                )
+        for system in snapshot.systems.values():
+            equipment, system.equipment_error = await self._inventory_collection(
+                system.system_id, "equipment"
+            )
+            current_equipment = {item["id"]: item for item in equipment}
+            for item in system.equipment:
+                # Discovery is explicit: health checks must not add/remove equipment,
+                # change memberships/names, or create new zones from returned data.
+                item["connectionStatus"] = current_equipment.get(item["id"], {}).get(
+                    "connectionStatus", "Unknown"
+                )
+
+    async def _update_air_quality(self, snapshot: Snapshot) -> None:
         for zone in snapshot.zones.values():
             system = snapshot.systems[zone.system_id]
             monitors = [
@@ -288,7 +343,6 @@ class JetsonClient:
                 raise
             except JetsonError as err:
                 snapshot.air_quality_errors[zone.key] = str(err)
-        return snapshot
 
     @staticmethod
     def _items(data: dict, key: str) -> list[dict]:

@@ -11,6 +11,7 @@ package.__path__ = [str(ROOT / "custom_components" / "jetson_home")]
 sys.modules.setdefault("jetson_protocol", package)
 api = importlib.import_module("jetson_protocol.api")
 models = importlib.import_module("jetson_protocol.models")
+polling = importlib.import_module("jetson_protocol.polling")
 
 
 def sample_status():
