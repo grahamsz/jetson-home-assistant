@@ -1,0 +1,41 @@
+{
+  "title": "Jetson Home",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Jetson Home",
+        "description": "Use the email address registered in the Jetson Home app. Continuing requests a sign-in email from Jetson.",
+        "data": {"email": "Email address"}
+      },
+      "magic_link": {
+        "title": "Verify your sign-in",
+        "description": "Jetson sent a link to {email}. Copy the sign-in link from the email without opening it, then paste it here. You can also paste only its token parameter. Links may expire or be single use. This integration is experimental and requires Jetson's cloud.",
+        "data": {"magic_link": "Sign-in link or token"}
+      },
+      "reauth_confirm": {
+        "title": "Sign in to Jetson Home again",
+        "description": "Continue to request a new sign-in email for {email}."
+      }
+    },
+    "error": {
+      "cannot_connect": "Jetson could not be reached or returned an unexpected response. Try again. If the sign-in link expired, restart setup for a new email.",
+      "invalid_auth": "The sign-in link or token was rejected. Use a fresh link for the same email address.",
+      "invalid_email": "Enter a valid email address."
+    },
+    "abort": {
+      "already_configured": "This Jetson account is already configured.",
+      "wrong_account": "Sign in with the same Jetson account used for this integration.",
+      "reauth_successful": "Jetson Home sign-in updated."
+    }
+  },
+  "options": {
+    "error": {"invalid_interval": "Enter a whole number from 30 to 900 seconds."},
+    "step": {
+      "init": {
+        "title": "Jetson Home options",
+        "description": "Poll the cloud every 30 to 900 seconds. Updates include installed equipment, zone status, and available air-quality readings.",
+        "data": {"scan_interval": "Polling interval (seconds)"}
+      }
+    }
+  }
+}
