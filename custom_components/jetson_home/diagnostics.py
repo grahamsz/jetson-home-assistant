@@ -3,13 +3,15 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from .models import optional_text
 from .polling import CONNECTIVITY_INTERVAL
 
 
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     coordinator = entry.runtime_data
     return {
-        "integration_version": "0.3.0",
+        "integration_version": "0.4.0",
+        "device_grouping": "one_per_system",
         "last_update_success": coordinator.last_update_success,
         "scan_interval_seconds": coordinator.update_interval.total_seconds(),
         "connectivity_interval_seconds": CONNECTIVITY_INTERVAL,
@@ -28,6 +30,10 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
                 },
                 "has_split_targets": "heatValue" in zone.setpoint,
                 "fan_max": zone.fan_max,
+                "air_quality_available": zone.air_quality is not None,
+                "air_quality_access": zone.air_quality_access,
+                "air_quality_missing_entitlement": zone.air_quality_missing_entitlement,
+                "air_quality_request_failed": zone.key in coordinator.data.air_quality_errors,
             }
             for zone in coordinator.data.zones.values()
         ],
@@ -43,6 +49,15 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
                 "energy_monitor_count": sum(
                     item.get("type") == "EnergyMonitor" for item in system.equipment
                 ),
+                "equipment": [
+                    {
+                        "type": optional_text(item.get("type")),
+                        "model": optional_text(item.get("model")),
+                        "role": optional_text(item.get("role")),
+                        "connection_status": optional_text(item.get("connectionStatus")),
+                    }
+                    for item in system.equipment
+                ],
             }
             for system in coordinator.data.systems.values()
         ],

@@ -1,21 +1,21 @@
-"""Register system, hub, equipment, and zone relationships in Home Assistant."""
+"""Group entities by system and consolidate earlier per-equipment registry rows."""
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
-from .models import Snapshot, build_devices
+from .models import Snapshot, build_devices, device_aliases, system_for_legacy_identifier
 
 
 def sync_devices(
     hass: HomeAssistant, entry: ConfigEntry, snapshot: Snapshot
 ) -> dict[str, dr.DeviceInfo]:
     registry = dr.async_get(hass)
-    plans = build_devices(snapshot)
+    entity_registry = er.async_get(hass)
     registered = {}
-    # Create identities first so explicit HA parent IDs exist for every link.
-    for key, device in plans.items():
+    for key, device in build_devices(snapshot).items():
         registered[key] = registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, key)},
@@ -25,12 +25,40 @@ def sync_devices(
             serial_number=device.serial_number,
             entry_type=dr.DeviceEntryType.SERVICE if device.is_service else None,
         )
-    result = {}
-    for key, device in plans.items():
-        parent = registered.get(device.via_identifier)
-        parent_id = parent.id if parent else None
-        registry.async_update_device(registered[key].id, via_device_id=parent_id)
-        result[key] = dr.DeviceInfo(identifiers={(DOMAIN, key)})
-        if parent_id is not None:
-            result[key]["via_device_id"] = parent_id
-    return result
+        registry.async_update_device(registered[key].id, via_device_id=None)
+
+    # Move disabled and unavailable entities too, before removing an old device.
+    # Entity unique IDs, entity IDs, custom names/options, and statistics are kept.
+    for old in tuple(dr.async_entries_for_config_entry(registry, entry.entry_id)):
+        targets = {
+            target
+            for domain, identifier in old.identifiers
+            if domain == DOMAIN
+            and (target := system_for_legacy_identifier(snapshot, identifier)) is not None
+        }
+        if len(targets) != 1:
+            continue
+        target = registered[next(iter(targets))]
+        if old.id == target.id:
+            continue
+        for entity in er.async_entries_for_device(
+            entity_registry, old.id, include_disabled_entities=True
+        ):
+            if entity.config_entry_id != entry.entry_id or entity.platform != DOMAIN:
+                continue
+            updates = {"device_id": target.id}
+            if entity.area_id is None and old.area_id is not None:
+                updates["area_id"] = old.area_id
+            if entity.disabled_by is er.RegistryEntryDisabler.DEVICE and target.disabled_by is None:
+                updates["disabled_by"] = er.RegistryEntryDisabler.USER
+            entity_registry.async_update_entity(entity.entity_id, **updates)
+        # Do not remove devices that still own other entities or child components.
+        if not er.async_entries_for_device(
+            entity_registry, old.id, include_disabled_entities=True
+        ) and not dr.async_entries_for_parent_device(registry, old.id):
+            registry.async_remove_device(old.id)
+
+    return {
+        alias: dr.DeviceInfo(identifiers={(DOMAIN, root)})
+        for alias, root in device_aliases(snapshot).items()
+    }

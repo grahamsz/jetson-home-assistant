@@ -6,6 +6,24 @@ from typing import Any
 
 AIR_QUALITY_LEVELS = ("excellent", "good", "fair", "poor", "unhealthy")
 AIR_QUALITY_LIMITS = {"co2": 5000, "pm25": 1000, "tvoc": 60000}
+HVAC_MODE_STATES = {
+    "Off": "off",
+    "Heat": "heat",
+    "Cool": "cool",
+    "Auto": "heat_cool",
+    "FanOnly": "fan_only",
+}
+HVAC_ACTIVITY_STATES = {
+    "Cooling": "cooling",
+    "Heating": "heating",
+    "Circulating": "fan",
+    "Dehumidifying": "drying",
+}
+STATUS_SENSOR_OPTIONS = {
+    "hvac_mode": tuple(HVAC_MODE_STATES.values()),
+    "fan_mode": ("auto", "1", "2", "3"),
+    "hvac_activity": ("off", "idle", *HVAC_ACTIVITY_STATES.values()),
+}
 
 
 def mapping(value: Any) -> dict[str, Any]:
@@ -69,6 +87,18 @@ class Zone:
     @property
     def action(self) -> str | None:
         return self.ambient.get("status", self.ambient.get("hvacStatus"))
+
+    @property
+    def hvac_mode_state(self) -> str | None:
+        return HVAC_MODE_STATES.get(self.mode)
+
+    @property
+    def hvac_activity_state(self) -> str | None:
+        if self.action == "Off":
+            if self.hvac_mode_state == "off":
+                return "off"
+            return "idle" if self.hvac_mode_state is not None else None
+        return HVAC_ACTIVITY_STATES.get(self.action)
 
     @property
     def current_temperature(self) -> float | None:
@@ -138,8 +168,25 @@ class Zone:
         )
 
     @property
+    def fan_mode_state(self) -> str | None:
+        value = self.fan_setting
+        if value == "Auto":
+            return "auto"
+        speed = number(value)
+        return str(int(speed)) if speed in (1, 2, 3) else None
+
+    @property
     def air_quality_access(self) -> str | None:
         return mapping(self.air_quality).get("access")
+
+    @property
+    def air_quality_missing_entitlement(self) -> str | None:
+        if (
+            self.air_quality_access == "limited"
+            and mapping(self.air_quality).get("missingEntitlement") == "jetson_care"
+        ):
+            return "jetson_care"
+        return None
 
     @property
     def air_quality_overall(self) -> str | None:
@@ -222,76 +269,43 @@ def equipment_for_zone(system: System, zone: Zone) -> list[dict[str, Any]]:
 
 
 def build_devices(snapshot: Snapshot) -> dict[str, Device]:
-    """Keep physical hardware distinct from API system/zone service aggregates."""
-    devices = {}
-    for system in snapshot.systems.values():
-        root = system_identifier(system.system_id)
-        devices[root] = Device(root, system.name, is_service=True)
-        for board in system.boards:
-            key = board_identifier(system.system_id, board["id"])
-            name = (
-                f"{system.name} Hub"
-                if len(system.boards) == 1
-                else f"{system.name} Hub {board['id']}"
-            )
-            devices[key] = Device(
-                key,
-                name,
-                root,
-                optional_text(board.get("type")) or "Jetson Hub",
-                optional_text(board.get("serialNumber")),
-                "Jetson",
-            )
-        equipment_ids = {item["id"] for item in system.equipment}
-        board_ids = {item["id"] for item in system.boards}
-        for item in system.equipment:
-            key = equipment_identifier(system.system_id, item["id"])
-            parent = root
-            # boardId is the explicit gateway attachment. A parent-equipment link
-            # is a fallback when there is no reported board attachment.
-            if isinstance(item.get("boardId"), str) and item["boardId"] in board_ids:
-                parent = board_identifier(system.system_id, item["boardId"])
-            elif (
-                isinstance(item.get("parentEquipmentId"), str)
-                and item["parentEquipmentId"] in equipment_ids
-                and item["parentEquipmentId"] != item["id"]
-            ):
-                parent = equipment_identifier(system.system_id, item["parentEquipmentId"])
-            devices[key] = Device(
-                key,
-                optional_text(item.get("name"))
-                or optional_text(item.get("type"))
-                or "Jetson equipment",
-                parent,
-                optional_text(item.get("model")),
-                optional_text(item.get("serialNumber")),
-            )
-        for key, device in tuple(devices.items()):
-            if not key.startswith(f"equipment:{system.system_id}:"):
-                continue
-            seen = {key}
-            parent = device.via_identifier
-            while parent is not None:
-                if parent in seen:
-                    devices[key] = Device(
-                        device.identifier,
-                        device.name,
-                        root,
-                        device.model,
-                        device.serial_number,
-                        device.manufacturer,
-                        device.is_service,
-                    )
-                    break
-                seen.add(parent)
-                ancestor = devices.get(parent)
-                parent = ancestor.via_identifier if ancestor else None
-    for zone in snapshot.zones.values():
-        # Preserve the initial prototype's zone identifier and entity unique IDs.
-        devices[zone.key] = Device(
-            zone.key,
-            f"{zone.system_name} {zone.name}",
-            system_identifier(zone.system_id),
+    """Present one aggregate device per system, regardless of its equipment count."""
+    return {
+        system_identifier(system.system_id): Device(
+            system_identifier(system.system_id),
+            system.name,
+            model="Jetson Home",
+            manufacturer="Jetson",
             is_service=True,
         )
-    return devices
+        for system in snapshot.systems.values()
+    }
+
+
+def device_aliases(snapshot: Snapshot) -> dict[str, str]:
+    """Resolve stable zone/equipment keys to their containing system device."""
+    aliases = {}
+    for system in snapshot.systems.values():
+        root = system_identifier(system.system_id)
+        aliases[root] = root
+        for board in system.boards:
+            aliases[board_identifier(system.system_id, board["id"])] = root
+        for item in system.equipment:
+            aliases[equipment_identifier(system.system_id, item["id"])] = root
+    for zone in snapshot.zones.values():
+        aliases[zone.key] = system_identifier(zone.system_id)
+    return aliases
+
+
+def system_for_legacy_identifier(snapshot: Snapshot, identifier: str) -> str | None:
+    """Also recognize old records for equipment/zones no longer in inventory."""
+    if current := device_aliases(snapshot).get(identifier):
+        return current
+    matches = [
+        system_identifier(system_id)
+        for system_id in snapshot.systems
+        if identifier.startswith(
+            (f"board:{system_id}:", f"equipment:{system_id}:", f"{system_id}:")
+        )
+    ]
+    return matches[0] if len(matches) == 1 else None

@@ -24,13 +24,6 @@ MODES = {
     HVACMode.HEAT_COOL: "Auto",
     HVACMode.FAN_ONLY: "FanOnly",
 }
-REVERSE_MODES = {value: key for key, value in MODES.items()}
-ACTIONS = {
-    "Cooling": HVACAction.COOLING,
-    "Heating": HVACAction.HEATING,
-    "Circulating": HVACAction.FAN,
-    "Dehumidifying": HVACAction.DRYING,
-}
 
 
 async def async_setup_entry(
@@ -101,13 +94,13 @@ class JetsonClimate(JetsonEntity, ClimateEntity):
 
     @property
     def hvac_mode(self) -> HVACMode | None:
-        return REVERSE_MODES.get(self.zone.mode)
+        value = self.zone.hvac_mode_state
+        return HVACMode(value) if value is not None else None
 
     @property
     def hvac_action(self) -> HVACAction | None:
-        if self.zone.action == "Off":
-            return HVACAction.OFF if self.zone.mode == "Off" else HVACAction.IDLE
-        return ACTIONS.get(self.zone.action)
+        value = self.zone.hvac_activity_state
+        return HVACAction(value) if value is not None else None
 
     @property
     def fan_modes(self) -> list[str]:
@@ -115,8 +108,7 @@ class JetsonClimate(JetsonEntity, ClimateEntity):
 
     @property
     def fan_mode(self) -> str | None:
-        value = self.zone.fan_setting
-        return str(value).lower() if value is not None else None
+        return self.zone.fan_mode_state
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

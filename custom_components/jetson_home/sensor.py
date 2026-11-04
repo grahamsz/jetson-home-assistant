@@ -11,7 +11,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .entity import JetsonEntity
-from .models import AIR_QUALITY_LEVELS
+from .models import AIR_QUALITY_LEVELS, STATUS_SENSOR_OPTIONS
+
+STATUS_SENSORS = {
+    "hvac_mode": ("HVAC mode", "mdi:thermostat"),
+    "fan_mode": ("Fan mode", "mdi:fan"),
+    "hvac_activity": ("HVAC activity", "mdi:heat-pump"),
+}
 
 POLLUTANTS = {
     "co2": ("CO₂", SensorDeviceClass.CO2, UnitOfRatio.PARTS_PER_MILLION),
@@ -40,6 +46,14 @@ async def async_setup_entry(
                 if present and (key, kind) not in known:
                     known.add((key, kind))
                     entities.append(JetsonSensor(coordinator, zone, kind))
+            for kind, present in (
+                ("hvac_mode", bool(zone.ambient)),
+                ("hvac_activity", bool(zone.ambient)),
+                ("fan_mode", bool(zone.circulation)),
+            ):
+                if present and (key, kind) not in known:
+                    known.add((key, kind))
+                    entities.append(JetsonStatusSensor(coordinator, zone, kind))
             if zone.air_quality is not None:
                 kinds = ["overall"]
                 if zone.air_quality_access == "full":
@@ -83,6 +97,28 @@ class JetsonSensor(JetsonEntity, SensorEntity):
         )
 
 
+class JetsonStatusSensor(JetsonEntity, SensorEntity):
+    """Read-only enum state recorded independently of climate attributes."""
+
+    _attr_device_class = SensorDeviceClass.ENUM
+
+    def __init__(self, coordinator, zone, kind: str) -> None:
+        super().__init__(coordinator, zone)
+        self.kind = kind
+        self._attr_unique_id = f"{zone.key}:{kind}"
+        self._attr_name, self._attr_icon = STATUS_SENSORS[kind]
+        self._attr_options = list(STATUS_SENSOR_OPTIONS[kind])
+
+    @property
+    def available(self) -> bool:
+        feature = self.zone.circulation if self.kind == "fan_mode" else self.zone.ambient
+        return super().available and bool(feature)
+
+    @property
+    def native_value(self) -> str | None:
+        return getattr(self.zone, f"{self.kind}_state")
+
+
 class JetsonAirQualitySensor(JetsonEntity, SensorEntity):
     """An API zone aggregate, not an unverified reading from one physical sensor."""
 
@@ -115,3 +151,12 @@ class JetsonAirQualitySensor(JetsonEntity, SensorEntity):
             if self.kind == "overall"
             else self.zone.pollutant(self.kind)
         )
+
+    @property
+    def extra_state_attributes(self) -> dict | None:
+        if self.kind != "overall":
+            return None
+        attributes = {"access": self.zone.air_quality_access}
+        if missing := self.zone.air_quality_missing_entitlement:
+            attributes["missing_entitlement"] = missing
+        return attributes

@@ -7,9 +7,11 @@ Version 0.3.0 keeps the discovered systems, hubs, equipment, and zones until sta
 Open **Settings → Devices & services → Jetson Home**, then the account entry's configuration/options menu:
 
 - **Polling interval** changes how often thermostat, temperature, humidity, fan, and permitted air-quality readings are updated. The default is 30 seconds; the range is 30–900 seconds. Saving a changed interval reloads the integration, which also performs startup discovery.
-- **Refresh configuration** checks for added, removed, or renamed systems, hubs, equipment, and zones. It runs immediately, updates registered relationships, and notifies entity platforms without unloading the integration. Credentials and polling options are retained. A success message ends the options flow; recoverable errors allow a retry.
+- **Refresh configuration** checks for added, removed, or renamed systems, hubs, equipment, and zones. It runs immediately, updates system devices and known equipment/zone membership, and notifies entity platforms without unloading the integration. Credentials and polling options are retained. A success message ends the options flow; recoverable errors allow a retry.
 
 Use Refresh configuration after commissioning hardware, adding an air-quality monitor, changing a zone's equipment, or renaming a system/device in Jetson. Existing stable IDs are retained. Reported capabilities and air-quality access changes for known zones can still update during normal measurement polling.
+
+From 0.4.0, systems are the HA devices and zone/equipment entities share their containing system device. The HVAC mode, fan mode, and HVAC activity history sensors read the same cached zone status and add no API calls; see [history sensors](HISTORY.md).
 
 ## Requests by event
 

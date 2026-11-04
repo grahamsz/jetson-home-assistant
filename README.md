@@ -2,20 +2,23 @@
 
 ![Jetson Home](custom_components/jetson_home/brand/icon.png)
 
-Experimental custom integration built by reverse engineering the user-supplied Jetson Home Android app **1.2.8**. It uses the Jetson cloud API. The intended hardware is a Jetson 4-ton heat pump. Live authentication and empty-account discovery have been validated; installed hardware remains untested.
+Experimental custom integration built by reverse engineering the user-supplied Jetson Home Android app **1.2.8**. It uses the Jetson cloud API. Live authentication and empty-account discovery have been validated, and the user has shown the earlier device layout loaded in HA with reported equipment. The new consolidated layout, displayed readings, and physical controls still need live validation.
 
 ## What is included
 
 - One climate entity per advertised temperature zone: current and target temperature, Off/Heat/Cool/Auto/FanOnly commands, and supported fan speeds.
 - Temperature and relative-humidity sensors when those features are reported.
-- Reported hubs and physical equipment registered as distinct devices with explicit gateway relationships, model/serial metadata when supplied, and diagnostic equipment-connectivity entities.
+- One Home Assistant device per Jetson system, containing all its zone controls/readings and named equipment-connectivity diagnostics. Multiple systems remain separate.
+- Separate HVAC mode, fan mode, and HVAC activity sensors for Recorder/history, with no additional API calls.
 - Zone air-quality classification, plus CO₂, PM2.5, and TVOC measurements when a matching monitor and full API access are reported. Restricted access exposes only the overall classification.
 - An optional humidifier entity with on/off and target percentage, only when the zone advertises `Humidify` capability and valid limits.
 - Email magic-link setup, refresh-token rotation, reauthentication, configurable polling, and allowlisted diagnostics.
 - [API guide](docs/API.md), [43-operation endpoint inventory](docs/endpoints.md), [309-definition schema catalog](docs/schema-catalog.md), [OpenAPI 3.1 reference](docs/openapi.json), and [humidity investigation](docs/HUMIDITY.md).
 - [Home Assistant device/entity structure](docs/HA_STRUCTURE.md), including what remains unfinished for energy monitoring.
 
-**Status (prototype 0.3.0):** 62 protocol/model/topology/polling tests pass, with protocol requests exercised against a local mock server. Live magic-link verification, account lookup, empty-system discovery, air-quality classification, and token refresh returned HTTP 200 with matching recovered response schemas on November 3, 2026. Formatting, linting, and Python syntax are checked. Real Home Assistant loading and installed-device responses/behavior still require testing. See [validation scope](docs/VALIDATION.md).
+**Status (prototype 0.4.0):** 80 protocol/model/polling/migration tests pass, using a local HTTP mock server and in-memory registry adapters. Live magic-link verification, account lookup, empty-system discovery, air-quality classification, and token refresh returned HTTP 200 with matching recovered response schemas on November 3, 2026. Formatting, linting, and Python syntax are checked. Consolidation in a real HA registry, the new history sensors, and installed-device behavior still require testing. See [validation scope](docs/VALIDATION.md).
+
+Version 0.4.0 consolidates the earlier hub/equipment/zone rows under the existing system device, moves registered entities before removing empty old rows, and keeps entity IDs. Zone and equipment names distinguish the combined device's entities. Device-based automations referring to removed device IDs need their device selected again; entity-based references keep their IDs. See [grouping and migration](docs/HA_STRUCTURE.md) and [history sensors](docs/HISTORY.md).
 
 Version 0.3.0 separates routine readings from configuration discovery. Discovery runs at startup/reload and through **Refresh configuration** in Jetson Home's options menu. See [polling and manual discovery](docs/POLLING.md).
 
@@ -32,7 +35,7 @@ For a manual install, copy `custom_components/jetson_home` into your Home Assist
 1. Open **Settings → Devices & services → Add integration → Jetson Home**.
 2. Enter the email address used in the Jetson app. Leave the second form open while retrieving the email.
 3. Copy the new sign-in link from the email **without opening it**, paste it into the form, and submit. A token parameter alone is also accepted. Links may expire or be single use; those server rules have not been measured. Restart setup to request another link if necessary.
-4. An account with no commissioned systems should finish setup with zero devices and entities. Reload the integration and restart HA to check that the login is retained. Live protocol checks succeeded with an empty account; the HA runtime flow remains to be verified.
+4. An account with no commissioned systems should finish setup with zero devices and entities. Reload the integration and restart HA to check that the login is retained. Live protocol checks succeeded with an empty account, and the earlier populated-device layout has been observed in HA.
 5. Once equipment is installed, finish Wi-Fi setup and account association in Jetson's official app. This integration does not provision hardware.
 6. Check reported temperatures and modes against the official app before relying on automations. Use one ordinary change at a time and confirm the app and equipment respond.
 
@@ -48,11 +51,11 @@ API outages make affected entities unavailable; device communication can still f
 
 ## Installed monitors
 
-The integration registers an API system as a service device, its reported hubs as physical devices, and hardware equipment beneath the reported gateway. Zone-level climate and aggregate measurements stay under a zone service device. Physical equipment keeps its API identifier even when its display name changes. Existing zone entity IDs from 0.1.0 are preserved.
+Each API system is one service device named for the system. Its climate entities and sensor names identify the zone, while connection diagnostics identify the relevant equipment. Hubs, equipment, and zone membership remain in the discovered configuration without creating extra HA device rows. Existing zone and equipment entity unique IDs are preserved when display names or grouping change.
 
-Air-quality telemetry comes from a **zone** endpoint without a physical source ID. It is kept on the zone, rather than copied onto each installed monitor. Detailed pollutant values require `access: full`; Jetson's limited response exposes only the overall level. An API error or null measurement is never reported as zero.
+Air-quality telemetry comes from a **zone** endpoint without a physical source ID. It is shown as a zone-named reading on the system device, without copying it onto each installed monitor. Detailed pollutant values require `access: full`; Jetson's limited response exposes only the overall level. The overall sensor's attributes show `access` and, when reported, `missing_entitlement: jetson_care`. Account diagnostics include the access state and whether the request failed. An API error or null measurement is never reported as zero.
 
-**Energy consumption is not implemented yet.** An installed energy monitor can be registered as hardware and report connectivity, but no W/kWh sensors are created. The bundle contains energy response schemas without an established read route. The presence of hardware alone is insufficient to create usable Energy-dashboard measurements. See [the mapping and remaining work](docs/HA_STRUCTURE.md).
+**Energy consumption is not implemented yet.** A discovered energy monitor can report a named connectivity diagnostic on the system device, but no W/kWh sensors are created. The bundle contains energy response schemas without an established read route. The presence of hardware alone is insufficient to create usable Energy-dashboard measurements. See [the mapping and remaining work](docs/HA_STRUCTURE.md).
 
 ## Humidity
 
@@ -69,7 +72,7 @@ No user-selectable dehumidification target or Dry command was found. An operatin
 - Target temperatures are rounded to the reported Celsius step, including Fahrenheit requests converted by Home Assistant. Exact Fahrenheit/Celsius rounding behavior needs comparison with hardware.
 - Schedules, presets, vacation, energy telemetry, installer settings, and equipment provisioning are documented but not implemented as entities or services.
 - Air quality is enabled for zones associated with reported TEMCO-AQM equipment, using explicit zone/equipment membership or the reported parent equipment when the peripheral has no own zone assignment. Missing or different installation metadata may require adjustments after hardware validation.
-- A reported hub/monitor is a registry device; that does not guarantee a numeric measurement or a live sensor. Hardware without a reported connectivity field is registered without a fabricated connectivity entity.
+- Reported equipment is grouped under the system device. Hardware inventory does not guarantee a numeric measurement; equipment without a connection-status field gets no fabricated connectivity entity.
 - Some API fields are explicitly deprecated but still required by the app's schema. The client supports the recovered newer fields and selected older temperature/fan fields; live schema drift may need adjustments.
 - Account/device identifiers remain in Home Assistant's local configuration and registries. Access and refresh tokens are stored in Home Assistant config-entry storage. Do not share that storage or authentication links. Diagnostics export an allowlist without tokens, names, addresses, or IDs.
 
@@ -85,7 +88,7 @@ ruff format --check .
 python -m compileall -q custom_components tests tools
 ```
 
-These tests run the protocol/model modules without importing Home Assistant. They verify real HTTP requests against a local mock service, token rotation/concurrency, failure behavior, command formats, schema references, capability checks, device graph plans, cross-system identity separation, and access-gated pollutant readings. They do not substitute for a Home Assistant runtime test or device testing.
+These tests run without Home Assistant installed. They verify HTTP requests against a local mock service, token rotation/concurrency, failure behavior, command formats, schema references, capability checks, polling schedules, cross-system identity separation, access-gated pollutant readings, history-state mappings, and consolidation using in-memory registry adapters. They do not substitute for a Home Assistant registry/Recorder runtime test or device testing.
 
 For installation-day discovery without Home Assistant, run `python tools/probe.py --email your-address`. It requests a sign-in email, accepts the link through a hidden terminal prompt, performs only discovery/status GETs after login, and prints selected readings and capabilities with identifiers omitted. It never sends HVAC/humidifier commands or saves tokens. Jetson may rotate tokens independently between sessions; account behavior is unverified.
 

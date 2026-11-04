@@ -2,7 +2,7 @@
 
 ## Completed on November 3, 2026
 
-- **62 passing tests** of the independent protocol client, data model, device topology, and polling scheduler. Protocol requests run against a local HTTP mock service.
+- **80 passing tests** of the independent protocol client, data model, device grouping, polling scheduler, history-state mappings, and registry consolidation. Protocol requests run against a local HTTP mock service; migration tests use in-memory registry adapters.
 - Covered real HTTP methods/bodies, discovery, optional features, empty accounts, legacy temperature fields, auth exchange, expiry, rotating refresh tokens, parallel refresh, one-time 401 retry, persistent 401, permission errors, 429 handling, redirects, malformed JSON, schema drift, invalid inputs, device-unreachable results, and no replay of failed writes.
 - Checked humidity-control eligibility against the exact app condition plus valid advertised target limits.
 - Checked all reconstructed schema references and key HVAC/humidity enums; no unresolved constructor/method placeholders or extraction failures.
@@ -12,8 +12,10 @@
 - Added hardware-inventory and air-quality tests for stable gateway/device/zone identities, cross-system ID separation, parent fallback/cycles, restricted access, null measurements, and optional endpoint failures. Energy-monitor metadata is tested without claiming consumption telemetry.
 - Cross-checked `via_device_id` registry linking, sensor device classes, and the current density/ratio unit enums against Home Assistant 2026.10's source.
 - Checked startup versus measurement request counts, five-minute connectivity scheduling, explicit discovery of new/removed zones, unchanged topology during health reads, failure rollback, access changes, empty-account background silence, and serialization of overlapping measurement/configuration requests. The options-menu wiring still needs a live HA runtime check.
+- Checked consolidation of legacy board/equipment/zone records into one system device, stable entity IDs, disabled entities and inherited areas, multiple accounts/systems, idempotency, and keeping records with unrelated entities or child components. These are adapter tests, not a live HA registry migration.
+- Checked selected HVAC mode versus actual activity, off versus idle, valid fan settings, and unknown/invalid state handling. The new enum sensors use existing status data; actual Recorder writes still need an HA runtime check.
 
-Fixtures are invented from recovered types, not captured from a physical device. The tests deliberately load the protocol modules without Home Assistant. Home Assistant runtime setup, config-flow UI, entity/platform loading, and real equipment communication remain untested.
+Fixtures are invented from recovered types, not captured from a physical device. The tests load the protocol modules without Home Assistant and use in-memory adapters for registry tests. A user-provided HA screenshot confirms the earlier layout appeared with one system, a hub, six equipment connection entities, and a zone with four entities. It does not show the raw air-quality response or establish subscription access. The 0.4.0 migration, combined layout, history sensors, displayed values, and physical control behavior still need live validation.
 
 ## Live endpoint checks: November 3, 2026
 
@@ -44,9 +46,11 @@ The account has no commissioned systems, so no system-specific board/equipment/z
 8. Observe at least one token renewal and a Home Assistant restart. Confirm rotating tokens survive the config-entry update and options changes reload only once. Check coexistence with the official app account session.
 9. Compare behavior during a cloud outage and when the hub is offline. Verify device-unreachable results and stale cloud readings do not look like successful physical changes.
 10. Check manual changes while a native schedule or vacation is active. Determine override duration and resume behavior before creating automations that depend on them.
-11. Confirm the hub, air-quality monitor, and energy monitor appear as separate devices with the reported model/serial and gateway links. Zone aggregate entities should remain on their zone service device.
+11. Confirm each system appears as one device, containing zone-named climate/readings and equipment-named connection diagnostics. After updating from 0.3.x, confirm entity IDs are retained and empty legacy device rows disappear. Re-select the system device in any automations that used old device IDs.
 12. Compare permitted CO₂/PM2.5/TVOC values and units with the app. Check limited Jetson Care access, missing readings, and connectivity behavior. Energy W/kWh entities remain pending a verified read endpoint and should not appear as fabricated measurements.
 13. Open Jetson Home's options menu and select **Refresh configuration**. Confirm the scan completes without requesting another email or changing the polling interval. After adding/renaming equipment or a zone in Jetson, confirm routine readings leave the configured topology unchanged until a manual refresh or reload. Compare ordinary zone-only traffic with the separate connectivity reads after five minutes.
+14. Verify HVAC mode, Fan mode, and HVAC activity have separate History entries. A selected Heat mode with no current demand should report `heat` and `idle`, respectively; unknown activity should remain unknown. Check fan settings against the app and your Recorder filters/retention.
+15. Inspect the overall air-quality sensor's attributes or downloaded integration diagnostics. `access: limited` plus `missing_entitlement: jetson_care` confirms restricted server access. Missing values alone, or a screenshot showing fewer entities, does not prove the subscription state.
 
 ## Useful non-secret evidence
 

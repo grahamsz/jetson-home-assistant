@@ -306,9 +306,9 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
     async def test_energy_hardware_does_not_invent_energy_telemetry(self):
         snapshot = await self.client.get_snapshot()
         devices = models.build_devices(snapshot)
-        monitor = devices["equipment:s1:em1"]
-        self.assertEqual(monitor.via_identifier, "board:s1:b1")
-        self.assertEqual(monitor.model, "EM-001")
+        self.assertEqual(set(devices), {"system:s1"})
+        self.assertEqual(models.device_aliases(snapshot)["equipment:s1:em1"], "system:s1")
+        self.assertEqual(snapshot.systems["s1"].equipment[2]["model"], "EM-001")
         self.assertTrue(all("/energy" not in call[1] for call in self.calls))
 
     async def test_no_air_monitor_means_no_air_quality_request(self):
@@ -339,7 +339,7 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("s1:z1", snapshot.air_quality_errors)
 
     async def test_inventory_failure_preserves_previous_hardware_links(self):
-        first = models.build_devices(await self.client.get_snapshot())
+        first = await self.client.get_snapshot()
 
         async def behavior(request, body):
             if request.path.endswith("/equipment") or request.path.endswith("/boards"):
@@ -347,7 +347,8 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
 
         self.behavior = behavior
         snapshot = await self.client.get_snapshot()
-        self.assertEqual(models.build_devices(snapshot), first)
+        self.assertEqual(snapshot.systems["s1"].boards, first.systems["s1"].boards)
+        self.assertEqual(snapshot.systems["s1"].equipment, first.systems["s1"].equipment)
         self.assertIsNotNone(snapshot.systems["s1"].equipment_error)
         self.assertIsNotNone(snapshot.systems["s1"].boards_error)
         self.assertEqual(snapshot.zones["s1:z1"].target_temperature, 22)
@@ -712,36 +713,32 @@ class ModelTests(unittest.TestCase):
         tokens = api.Tokens("access-secret", "refresh-secret", 0)
         self.assertNotIn("secret", repr(tokens))
 
-    def test_registry_plan_keeps_hubs_hardware_and_zone_aggregates_distinct(self):
+    def test_registry_plan_groups_hubs_equipment_and_zones_under_one_system(self):
         zone = self.zone()
         system = models.System("s1", "Test", [{"id": "b1", "type": "Arctic"}], sample_equipment())
         devices = models.build_devices(models.Snapshot({"s1": system}, {zone.key: zone}))
         self.assertTrue(devices["system:s1"].is_service)
-        self.assertTrue(devices["s1:z1"].is_service)
-        self.assertEqual(devices["s1:z1"].via_identifier, "system:s1")
-        self.assertEqual(devices["board:s1:b1"].via_identifier, "system:s1")
-        self.assertEqual(devices["equipment:s1:aq1"].via_identifier, "board:s1:b1")
-        self.assertEqual(devices["equipment:s1:em1"].via_identifier, "board:s1:b1")
-        self.assertFalse(devices["equipment:s1:aq1"].is_service)
-        self.assertEqual(devices["equipment:s1:em1"].serial_number, "invented-monitor-serial")
-        self.assertIsNone(devices["equipment:s1:aq1"].manufacturer)
+        self.assertEqual(set(devices), {"system:s1"})
+        self.assertEqual(devices["system:s1"].model, "Jetson Home")
+        aliases = models.device_aliases(models.Snapshot({"s1": system}, {zone.key: zone}))
+        for key in ("s1:z1", "board:s1:b1", "equipment:s1:aq1", "equipment:s1:em1"):
+            self.assertEqual(aliases[key], "system:s1")
 
     def test_duplicate_equipment_ids_in_different_systems_do_not_merge(self):
         first = models.System("s1", "First", [{"id": "b1"}], sample_equipment())
         second = models.System("s2", "Second", [{"id": "b1"}], sample_equipment())
         devices = models.build_devices(models.Snapshot({"s1": first, "s2": second}))
-        self.assertEqual(devices["equipment:s1:em1"].via_identifier, "board:s1:b1")
-        self.assertEqual(devices["equipment:s2:em1"].via_identifier, "board:s2:b1")
-        self.assertNotEqual(
-            devices["equipment:s1:em1"].identifier, devices["equipment:s2:em1"].identifier
-        )
+        self.assertEqual(set(devices), {"system:s1", "system:s2"})
+        aliases = models.device_aliases(models.Snapshot({"s1": first, "s2": second}))
+        self.assertNotEqual(aliases["equipment:s1:em1"], aliases["equipment:s2:em1"])
 
-    def test_parent_equipment_is_fallback_when_board_is_unknown(self):
+    def test_unknown_gateway_does_not_split_equipment_into_extra_devices(self):
         equipment = sample_equipment()
         equipment[1]["boardId"] = "missing-board"
         system = models.System("s1", "Test", [{"id": "b1"}], equipment)
         devices = models.build_devices(models.Snapshot({"s1": system}))
-        self.assertEqual(devices["equipment:s1:aq1"].via_identifier, "equipment:s1:hp1")
+        self.assertEqual(set(devices), {"system:s1"})
+        self.assertEqual(system.equipment[1]["parentEquipmentId"], "hp1")
 
     def test_bad_parent_cycles_are_not_sent_to_device_registry(self):
         equipment = [
@@ -752,12 +749,72 @@ class ModelTests(unittest.TestCase):
         devices = models.build_devices(
             models.Snapshot({"s1": models.System("s1", "Test", equipment=equipment)})
         )
-        for key in devices:
-            seen = set()
-            while key is not None:
-                self.assertNotIn(key, seen)
-                seen.add(key)
-                key = devices[key].via_identifier
+        self.assertEqual(set(devices), {"system:s1"})
+        self.assertIsNone(devices["system:s1"].via_identifier)
+
+    def test_air_quality_entitlement_is_reported_only_for_limited_jetson_care(self):
+        zone = self.zone()
+        zone.air_quality = sample_air_quality()
+        zone.air_quality["access"] = "limited"
+        zone.air_quality["missingEntitlement"] = "jetson_care"
+        self.assertEqual(zone.air_quality_missing_entitlement, "jetson_care")
+        zone.air_quality["access"] = "full"
+        self.assertIsNone(zone.air_quality_missing_entitlement)
+        zone.air_quality["access"] = "limited"
+        zone.air_quality["missingEntitlement"] = "unexpected-value"
+        self.assertIsNone(zone.air_quality_missing_entitlement)
+
+    def test_hvac_mode_sensor_matches_home_assistant_mode_states(self):
+        zone = self.zone()
+        for raw, expected in (
+            ("Off", "off"),
+            ("Heat", "heat"),
+            ("Cool", "cool"),
+            ("Auto", "heat_cool"),
+            ("FanOnly", "fan_only"),
+            ("Unexpected", None),
+        ):
+            zone.ambient["settings"]["mode"] = raw
+            self.assertEqual(zone.hvac_mode_state, expected)
+
+    def test_idle_activity_is_separate_from_selected_heating_mode(self):
+        zone = self.zone()
+        zone.ambient["status"] = "Off"
+        self.assertEqual(zone.hvac_mode_state, "heat")
+        self.assertEqual(zone.hvac_activity_state, "idle")
+        zone.ambient["settings"]["mode"] = "Off"
+        self.assertEqual(zone.hvac_activity_state, "off")
+        zone.ambient["settings"]["mode"] = "Unexpected"
+        self.assertIsNone(zone.hvac_activity_state)
+
+    def test_activity_sensor_reports_known_work_and_unknown_is_not_idle(self):
+        zone = self.zone()
+        for raw, expected in (
+            ("Heating", "heating"),
+            ("Cooling", "cooling"),
+            ("Circulating", "fan"),
+            ("Dehumidifying", "drying"),
+            ("Unknown", None),
+            ("Unexpected", None),
+        ):
+            zone.ambient["status"] = raw
+            self.assertEqual(zone.hvac_activity_state, expected)
+
+    def test_fan_mode_sensor_rejects_invalid_or_missing_reported_modes(self):
+        zone = self.zone()
+        for raw, expected in (("Auto", "auto"), (1, "1"), (1.0, "1"), (2, "2"), (3, "3")):
+            zone.circulation["settings"]["fanSpeed"] = raw
+            self.assertEqual(zone.fan_mode_state, expected)
+        for raw in (None, True, 1.5, "1", 0, 4, "Unexpected"):
+            zone.circulation["settings"]["fanSpeed"] = raw
+            self.assertIsNone(zone.fan_mode_state)
+
+    def test_removed_legacy_objects_still_map_to_their_known_system(self):
+        snapshot = models.Snapshot({"s1": models.System("s1", "Home")})
+        for key in ("board:s1:removed", "equipment:s1:removed", "s1:removed-zone"):
+            self.assertEqual(models.system_for_legacy_identifier(snapshot, key), "system:s1")
+        self.assertIsNone(models.system_for_legacy_identifier(snapshot, "equipment:other:e1"))
+        self.assertIsNone(models.system_for_legacy_identifier(snapshot, "unrecognized"))
 
     def test_null_air_reading_stays_unknown_but_zero_is_valid(self):
         zone = self.zone()

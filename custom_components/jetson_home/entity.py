@@ -25,6 +25,11 @@ class JetsonEntity(CoordinatorEntity[JetsonCoordinator]):
         return self.coordinator.data.zones.get(self.zone_key, self._initial_zone)
 
     @property
+    def name(self) -> str:
+        # Zone names distinguish multiple thermostats/readings on one system device.
+        return f"{self.zone.name} {self._attr_name}" if self._attr_name else self.zone.name
+
+    @property
     def available(self) -> bool:
         return (
             super().available and self.zone_key in self.coordinator.data.zones and self.zone.online

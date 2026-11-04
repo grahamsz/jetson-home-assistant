@@ -1,4 +1,4 @@
-"""Reported equipment connectivity attached to each physical equipment device."""
+"""Named equipment connectivity diagnostics on the containing system device."""
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -9,7 +9,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import JetsonCoordinator
-from .models import equipment_identifier
+from .models import equipment_identifier, optional_text
 
 
 async def async_setup_entry(
@@ -62,6 +62,16 @@ class JetsonConnectivity(CoordinatorEntity[JetsonCoordinator], BinarySensorEntit
             if system
             else None
         )
+
+    @property
+    def name(self) -> str:
+        equipment = self.equipment or {}
+        label = (
+            optional_text(equipment.get("name"))
+            or optional_text(equipment.get("type"))
+            or "Equipment"
+        )
+        return f"{label} connection"
 
     @property
     def available(self) -> bool:
