@@ -1,6 +1,7 @@
 """Views of schemas recovered from Jetson Home 1.2.8; no HA dependency."""
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from math import isfinite
 from typing import Any
 
@@ -192,6 +193,26 @@ class Zone:
     def air_quality_overall(self) -> str | None:
         value = mapping(mapping(self.air_quality).get("current")).get("overall")
         return value if value in AIR_QUALITY_LEVELS else None
+
+    def air_quality_available(self, kind: str, *, now: datetime | None = None) -> bool:
+        """Match the app's one-hour stale-reading cutoff; never guess a timezone."""
+        current = mapping(mapping(self.air_quality).get("current"))
+        stamp = current.get("lastUpdatedAt")
+        try:
+            measured = datetime.fromisoformat(stamp) if isinstance(stamp, str) else None
+        except ValueError:
+            return False
+        if measured is None or measured.tzinfo is None:
+            return False
+        age = ((now or datetime.now(UTC)) - measured).total_seconds()
+        if age < 0 or age > 3600:
+            return False
+        if kind == "overall":
+            return self.air_quality_overall is not None
+        return (
+            self.pollutant(kind) is not None
+            and mapping(current.get(kind)).get("settling") is not True
+        )
 
     def pollutant(self, kind: str) -> float | None:
         if self.air_quality_access != "full" or kind not in AIR_QUALITY_LIMITS:

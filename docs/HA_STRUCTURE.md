@@ -78,3 +78,7 @@ The AWS IoT MQTT provisioning schema is specifically for EM-001. It does not est
 ## Validation scope
 
 Protocol/polling tests use a local mock server. Consolidation tests use in-memory registry adapters, covering stable entity IDs, disabled entities, inherited areas, account/system isolation, repeated migration, and keeping records with unrelated entities or child components. A user screenshot confirms the earlier per-equipment layout loaded in HA. The combined layout, migration in a real registry, Recorder history, and physical control behavior still need live testing.
+
+## Air-quality freshness
+
+Air-quality entities become unavailable when `current.lastUpdatedAt` is more than one hour old, matching the Android app threshold (`isReadingStale`, recovered bundle lines 1015152–1015235). A recent reading remains available when the fan stops; availability returns on a fresh sample. Missing, invalid, timezone-less, or future timestamps are treated as unavailable. Individual pollutants are also unavailable while settling or when their value is missing. Climate and room temperature/humidity remain independent. This is evaluated at each normal polling update.

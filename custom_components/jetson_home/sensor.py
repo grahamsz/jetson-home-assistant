@@ -142,10 +142,13 @@ class JetsonAirQualitySensor(JetsonEntity, SensorEntity):
             super().available
             and self.zone.air_quality is not None
             and (self.kind == "overall" or self.zone.air_quality_access == "full")
+            and self.zone.air_quality_available(self.kind)
         )
 
     @property
     def native_value(self) -> str | float | None:
+        if not self.zone.air_quality_available(self.kind):
+            return None
         return (
             self.zone.air_quality_overall
             if self.kind == "overall"
