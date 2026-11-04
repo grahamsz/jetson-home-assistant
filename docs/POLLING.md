@@ -13,6 +13,8 @@ Use Refresh configuration after commissioning hardware, adding an air-quality mo
 
 From 0.4.0, systems are the HA devices and zone/equipment entities share their containing system device. The HVAC mode, fan mode, and HVAC activity history sensors read the same cached zone status and add no API calls; see [history sensors](HISTORY.md).
 
+Version 0.6.0's Fan activity/current-speed sensors also use cached zone status. Heat-strip watts share the existing energy response. These additions and localization add no network requests or discovery scans.
+
 ## Requests by event
 
 | Event | Reads | Applied changes |

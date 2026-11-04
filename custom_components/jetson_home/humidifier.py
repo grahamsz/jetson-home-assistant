@@ -9,10 +9,10 @@ from homeassistant.components.humidifier import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .entity import JetsonEntity
+from .errors import user_error
 from .models import mapping, number
 
 
@@ -35,7 +35,7 @@ async def async_setup_entry(
 
 
 class JetsonHumidifier(JetsonEntity, HumidifierEntity):
-    _attr_name = "Humidifier"
+    _attr_translation_key = "humidifier"
     _attr_device_class = HumidifierDeviceClass.HUMIDIFIER
 
     def __init__(self, coordinator, zone) -> None:
@@ -87,7 +87,7 @@ class JetsonHumidifier(JetsonEntity, HumidifierEntity):
 
     async def _update(self, settings: dict) -> None:
         if not self.zone.supports_humidifier:
-            raise HomeAssistantError("This zone does not advertise humidifier control")
+            raise user_error("unsupported_humidifier")
         await self.coordinator.command("set_humidity_settings", self.zone, settings)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
@@ -99,9 +99,9 @@ class JetsonHumidifier(JetsonEntity, HumidifierEntity):
     async def async_set_humidity(self, humidity: int) -> None:
         value = number(humidity)
         if value is None or not self.min_humidity <= value <= self.max_humidity:
-            raise HomeAssistantError("Humidity is outside the zone's supported range")
+            raise user_error("humidity_out_of_range")
         step = self.target_humidity_step
         value = round(self.min_humidity + round((value - self.min_humidity) / step) * step, 6)
         if not self.min_humidity <= value <= self.max_humidity:
-            raise HomeAssistantError("Rounded humidity exceeds the supported range")
+            raise user_error("rounded_humidity_out_of_range")
         await self._update({"setpoint": {"value": value}})

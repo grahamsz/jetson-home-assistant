@@ -1,0 +1,373 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Conectar Jetson Home",
+        "description": "Usa el correo electrónico registrado en la aplicación Jetson Home. Al continuar, Jetson te enviará un correo para iniciar sesión.",
+        "data": {
+          "email": "Correo electrónico"
+        }
+      },
+      "magic_link": {
+        "title": "Verifica tu inicio de sesión",
+        "description": "Jetson envió un enlace a {email}. Cópialo del correo sin abrirlo y pégalo aquí. También puedes pegar solo el parámetro token. Los enlaces pueden caducar o ser de un solo uso. Esta integración es experimental y requiere la nube de Jetson.",
+        "data": {
+          "magic_link": "Enlace o token de inicio de sesión"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Vuelve a iniciar sesión en Jetson Home",
+        "description": "Continúa para solicitar un nuevo correo de inicio de sesión para {email}."
+      }
+    },
+    "error": {
+      "cannot_connect": "No se pudo conectar con Jetson o la respuesta fue inesperada. Inténtalo de nuevo. Si el enlace caducó, reinicia la configuración para recibir otro correo.",
+      "invalid_auth": "El enlace o token fue rechazado. Usa un enlace nuevo para el mismo correo electrónico.",
+      "invalid_email": "Introduce un correo electrónico válido."
+    },
+    "abort": {
+      "already_configured": "Esta cuenta de Jetson ya está configurada.",
+      "wrong_account": "Inicia sesión con la misma cuenta de Jetson usada en esta integración.",
+      "reauth_successful": "Se actualizó el inicio de sesión de Jetson Home."
+    }
+  },
+  "options": {
+    "error": {
+      "invalid_interval": "Introduce un número entero entre 30 y 900 segundos.",
+      "cannot_refresh": "No se pudo conectar con Jetson o la respuesta fue inesperada. Se conserva la configuración anterior. Envía de nuevo para reintentar.",
+      "refresh_incomplete": "No se pudieron actualizar algunos datos de los equipos o del concentrador. Las lecturas disponibles siguen actualizándose. Envía de nuevo para reintentar.",
+      "not_loaded": "Carga o recarga la integración Jetson Home antes de actualizar su configuración."
+    },
+    "abort": {
+      "configuration_refreshed": "Se actualizó la configuración de Jetson Home. Se comprobaron los cambios en sistemas, concentradores, equipos y zonas.",
+      "reauth_required": "Vuelve a iniciar sesión en Jetson Home y después actualiza la configuración."
+    },
+    "step": {
+      "init": {
+        "title": "Opciones de Jetson Home",
+        "menu_options": {
+          "polling": "Intervalo de actualización",
+          "refresh_configuration": "Actualizar configuración"
+        }
+      },
+      "polling": {
+        "title": "Intervalo de actualización",
+        "description": "Actualiza las zonas conocidas, la calidad del aire disponible, las lecturas de potencia y energía y el funcionamiento de la bomba de calor cada 30 a 900 segundos. La conexión de los equipos se comprueba en la siguiente actualización después de cinco minutos. Usa Actualizar configuración tras cambiar los equipos instalados o las zonas.",
+        "data": {
+          "scan_interval": "Intervalo de actualización (segundos)"
+        }
+      },
+      "refresh_configuration": {
+        "title": "Actualizar configuración",
+        "description": "Comprueba si se añadieron, eliminaron o renombraron sistemas, concentradores, equipos o zonas. Se conservan el inicio de sesión y el intervalo de actualización."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "temperature": {
+        "name": "{zone}: temperatura"
+      },
+      "humidity": {
+        "name": "{zone}: humedad"
+      },
+      "hvac_mode": {
+        "name": "{zone}: modo de climatización",
+        "state": {
+          "off": "Apagado",
+          "heat": "Calefacción",
+          "cool": "Refrigeración",
+          "heat_cool": "Automático",
+          "fan_only": "Solo ventilador"
+        }
+      },
+      "fan_mode": {
+        "name": "{zone}: modo del ventilador",
+        "state": {
+          "auto": "Automático",
+          "1": "Baja",
+          "2": "Media",
+          "3": "Alta"
+        }
+      },
+      "hvac_activity": {
+        "name": "{zone}: actividad de climatización",
+        "state": {
+          "off": "Apagado",
+          "idle": "En espera",
+          "heating": "Calentando",
+          "cooling": "Enfriando",
+          "fan": "Ventilador en marcha",
+          "drying": "Deshumidificando"
+        }
+      },
+      "fan_activity": {
+        "name": "{zone}: actividad del ventilador",
+        "state": {
+          "off": "Apagado",
+          "running": "En marcha"
+        }
+      },
+      "fan_speed": {
+        "name": "{zone}: velocidad del ventilador",
+        "state": {
+          "0": "Apagado",
+          "1": "Baja",
+          "2": "Media",
+          "3": "Alta"
+        }
+      },
+      "air_quality": {
+        "name": "{zone}: calidad del aire",
+        "state": {
+          "excellent": "Excelente",
+          "good": "Buena",
+          "fair": "Aceptable",
+          "poor": "Mala",
+          "unhealthy": "Insalubre"
+        },
+        "state_attributes": {
+          "last_updated_at": {
+            "name": "Última actualización de la muestra"
+          },
+          "access": {
+            "name": "Acceso",
+            "state": {
+              "full": "Completo",
+              "limited": "Limitado"
+            }
+          },
+          "missing_entitlement": {
+            "name": "Suscripción necesaria"
+          }
+        }
+      },
+      "co2": {
+        "name": "{zone}: CO₂",
+        "state_attributes": {
+          "last_updated_at": {
+            "name": "Última actualización de la muestra"
+          },
+          "measured_at": {
+            "name": "Fecha de medición"
+          },
+          "settling": {
+            "name": "Estabilización del sensor"
+          }
+        }
+      },
+      "pm25": {
+        "name": "{zone}: PM2.5",
+        "state_attributes": {
+          "last_updated_at": {
+            "name": "Última actualización de la muestra"
+          },
+          "measured_at": {
+            "name": "Fecha de medición"
+          },
+          "settling": {
+            "name": "Estabilización del sensor"
+          }
+        }
+      },
+      "tvoc": {
+        "name": "{zone}: COV totales",
+        "state_attributes": {
+          "last_updated_at": {
+            "name": "Última actualización de la muestra"
+          },
+          "measured_at": {
+            "name": "Fecha de medición"
+          },
+          "settling": {
+            "name": "Estabilización del sensor"
+          }
+        }
+      },
+      "telemetry_status": {
+        "name": "{zone}: estado de telemetría"
+      },
+      "observed_at": {
+        "name": "{zone}: última lectura del equipo"
+      },
+      "main_power": {
+        "name": "Potencia principal",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Actualización de la fuente"
+          }
+        }
+      },
+      "main_energy_today": {
+        "name": "Energía principal de hoy",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Actualización de la fuente"
+          },
+          "source_timezone": {
+            "name": "Zona horaria de la fuente"
+          },
+          "period_date": {
+            "name": "Fecha del período"
+          }
+        }
+      },
+      "load_power": {
+        "name": "{load}: potencia de la carga",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Actualización de la fuente"
+          }
+        }
+      },
+      "load_energy_today": {
+        "name": "{load}: energía de la carga de hoy",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Actualización de la fuente"
+          },
+          "source_timezone": {
+            "name": "Zona horaria de la fuente"
+          },
+          "period_date": {
+            "name": "Fecha del período"
+          }
+        }
+      },
+      "heat_strips_power": {
+        "name": "{load}: potencia de las resistencias eléctricas",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Actualización de la fuente"
+          }
+        }
+      },
+      "operation_mode": {
+        "name": "{equipment}: modo de la unidad"
+      },
+      "operation_status": {
+        "name": "{equipment}: actividad de la unidad"
+      },
+      "operation_fanspeedstatus": {
+        "name": "{equipment}: velocidad actual del ventilador",
+        "state": {
+          "0": "Apagado",
+          "1": "Baja",
+          "2": "Media",
+          "3": "Alta"
+        },
+        "state_attributes": {
+          "raw_value": {
+            "name": "Valor original informado"
+          }
+        }
+      },
+      "operation_fanspeedsetpoint": {
+        "name": "{equipment}: velocidad seleccionada del ventilador",
+        "state": {
+          "1": "Baja",
+          "2": "Media",
+          "3": "Alta"
+        },
+        "state_attributes": {
+          "raw_value": {
+            "name": "Valor original informado"
+          }
+        }
+      },
+      "operation_fanlevelstatus": {
+        "name": "{equipment}: nivel del ventilador"
+      },
+      "operation_fanlevelsetting": {
+        "name": "{equipment}: nivel seleccionado del ventilador"
+      },
+      "operation_fanoperatingmode": {
+        "name": "{equipment}: modo de funcionamiento del ventilador"
+      }
+    },
+    "binary_sensor": {
+      "zone_connection": {
+        "name": "{zone}: conexión de la zona",
+        "state_attributes": {
+          "issues": {
+            "name": "Problemas de conexión"
+          },
+          "issue_count": {
+            "name": "Número de problemas"
+          }
+        }
+      },
+      "equipment_connection": {
+        "name": "{equipment}: conexión"
+      }
+    },
+    "climate": {
+      "thermostat": {
+        "name": "{zone}",
+        "state_attributes": {
+          "fan_mode": {
+            "name": "Modo del ventilador",
+            "state": {
+              "auto": "Automático",
+              "1": "Baja",
+              "2": "Media",
+              "3": "Alta"
+            }
+          },
+          "jetson_mode": {
+            "name": "Modo informado por Jetson"
+          },
+          "jetson_status": {
+            "name": "Actividad informada por Jetson"
+          },
+          "heat_target_celsius": {
+            "name": "Objetivo de calefacción (°C)"
+          },
+          "cool_target_celsius": {
+            "name": "Objetivo de refrigeración (°C)"
+          }
+        }
+      }
+    },
+    "humidifier": {
+      "humidifier": {
+        "name": "{zone}: humidificador"
+      }
+    }
+  },
+  "exceptions": {
+    "unsupported_hvac_mode": {
+      "message": "Modo de climatización de Jetson no compatible."
+    },
+    "unsupported_split_targets": {
+      "message": "Esta integración no admite temperaturas objetivo separadas para calefacción y refrigeración."
+    },
+    "temperature_out_of_range": {
+      "message": "La temperatura está fuera del rango admitido por la zona."
+    },
+    "rounded_temperature_out_of_range": {
+      "message": "La temperatura redondeada está fuera del rango admitido."
+    },
+    "unsupported_fan_speed": {
+      "message": "Velocidad del ventilador no compatible con esta zona."
+    },
+    "unsupported_humidifier": {
+      "message": "Esta zona no ofrece control de humidificador."
+    },
+    "humidity_out_of_range": {
+      "message": "La humedad está fuera del rango admitido por la zona."
+    },
+    "rounded_humidity_out_of_range": {
+      "message": "La humedad redondeada está fuera del rango admitido."
+    },
+    "zone_unavailable": {
+      "message": "La zona de Jetson no está disponible."
+    },
+    "reauth_required": {
+      "message": "Vuelve a iniciar sesión en Jetson Home."
+    },
+    "command_failed": {
+      "message": "Jetson no pudo completar la orden: {error}"
+    }
+  }
+}

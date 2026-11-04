@@ -11,10 +11,10 @@ from homeassistant.components.climate import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .entity import JetsonEntity
+from .errors import user_error
 from .models import number
 
 MODES = {
@@ -45,7 +45,7 @@ async def async_setup_entry(
 
 
 class JetsonClimate(JetsonEntity, ClimateEntity):
-    _attr_name = None
+    _attr_translation_key = "thermostat"
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_hvac_modes: ClassVar[list[HVACMode]] = list(MODES)
 
@@ -121,7 +121,7 @@ class JetsonClimate(JetsonEntity, ClimateEntity):
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         if hvac_mode not in MODES:
-            raise HomeAssistantError("Unsupported Jetson HVAC mode")
+            raise user_error("unsupported_hvac_mode")
         await self.coordinator.command("set_mode", self.zone, MODES[hvac_mode])
 
     async def async_turn_off(self) -> None:
@@ -129,23 +129,21 @@ class JetsonClimate(JetsonEntity, ClimateEntity):
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         if "target_temp_low" in kwargs or "target_temp_high" in kwargs:
-            raise HomeAssistantError(
-                "Separate heat/cool targets are not supported by the recovered endpoint"
-            )
+            raise user_error("unsupported_split_targets")
         value = number(kwargs.get(ATTR_TEMPERATURE))
         if value is None or not self.min_temp <= value <= self.max_temp:
-            raise HomeAssistantError("Temperature is outside the zone's supported range")
+            raise user_error("temperature_out_of_range")
         step = self.target_temperature_step
         # HA converts Fahrenheit requests to Celsius, often producing fractions.
         value = round(round(value / step) * step, 6)
         if not self.min_temp <= value <= self.max_temp:
-            raise HomeAssistantError("Rounded temperature exceeds the supported range")
+            raise user_error("rounded_temperature_out_of_range")
         if (mode := kwargs.get("hvac_mode")) is not None:
             await self.async_set_hvac_mode(mode)
         await self.coordinator.command("set_temperature", self.zone, value)
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         if not self.zone.circulation or fan_mode not in self.fan_modes:
-            raise HomeAssistantError("Unsupported fan speed for this zone")
+            raise user_error("unsupported_fan_speed")
         speed = "Auto" if fan_mode == "auto" else int(fan_mode)
         await self.coordinator.command("set_fan_speed", self.zone, speed)

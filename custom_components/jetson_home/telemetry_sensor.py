@@ -3,15 +3,15 @@
 from datetime import datetime
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import JetsonCoordinator
 from .energy import timestamp
-from .entity import JetsonEntity
+from .entity import JetsonEntity, JetsonNamedEntity
 from .models import equipment_identifier, mapping, optional_text
-from .telemetry import OPERATION_FIELDS, operation_value
+from .telemetry import SPEED_OPERATION_OPTIONS, operation_speed_state, operation_value
 
 
 class JetsonZoneTelemetrySensor(JetsonEntity, SensorEntity):
@@ -21,9 +21,7 @@ class JetsonZoneTelemetrySensor(JetsonEntity, SensorEntity):
         super().__init__(coordinator, zone)
         self.kind = kind
         self._attr_unique_id = f"{zone.key}:{kind}"
-        self._attr_name = (
-            "Telemetry status" if kind == "telemetry_status" else "Last device reading"
-        )
+        self._attr_translation_key = kind
         if kind == "observed_at":
             self._attr_device_class = SensorDeviceClass.TIMESTAMP
 
@@ -44,8 +42,7 @@ class JetsonZoneTelemetrySensor(JetsonEntity, SensorEntity):
         )
 
 
-class JetsonHeatPumpSensor(CoordinatorEntity[JetsonCoordinator], SensorEntity):
-    _attr_has_entity_name = True
+class JetsonHeatPumpSensor(JetsonNamedEntity, SensorEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(
@@ -58,21 +55,31 @@ class JetsonHeatPumpSensor(CoordinatorEntity[JetsonCoordinator], SensorEntity):
         self.key = equipment_identifier(system_id, equipment_id)
         self._initial_device_info = coordinator.device_infos[self.key]
         self._attr_unique_id = f"{self.key}:operation:{field}"
+        self._attr_translation_key = f"operation_{field.lower()}"
+        self._update_equipment_name()
+        if field in SPEED_OPERATION_OPTIONS:
+            self._attr_device_class = SensorDeviceClass.ENUM
+            self._attr_options = list(SPEED_OPERATION_OPTIONS[field])
 
     @property
     def status(self) -> dict:
         system = self.coordinator.data.systems.get(self.system_id)
         return system.heatpump_status.get(self.equipment_id, {}) if system else {}
 
-    @property
-    def name(self) -> str:
+    def _update_equipment_name(self) -> None:
         system = self.coordinator.data.systems.get(self.system_id)
         equipment = (
             next((item for item in system.equipment if item["id"] == self.equipment_id), {})
             if system
             else {}
         )
-        return f"{optional_text(equipment.get('name')) or 'Heat pump'} {OPERATION_FIELDS[self.field][0]}"
+        label = optional_text(equipment.get("name")) or self.equipment_id
+        self._set_name_placeholders(equipment=label)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._update_equipment_name()
+        super()._handle_coordinator_update()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -89,4 +96,12 @@ class JetsonHeatPumpSensor(CoordinatorEntity[JetsonCoordinator], SensorEntity):
 
     @property
     def native_value(self) -> str | float | None:
+        if self.field in SPEED_OPERATION_OPTIONS:
+            return operation_speed_state(self.status, self.field)
         return operation_value(self.status, self.field)
+
+    @property
+    def extra_state_attributes(self) -> dict | None:
+        if self.field in SPEED_OPERATION_OPTIONS:
+            return {"raw_value": mapping(self.status.get("operation")).get(self.field)}
+        return None

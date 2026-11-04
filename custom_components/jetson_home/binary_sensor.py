@@ -2,14 +2,13 @@
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import JetsonCoordinator
-from .entity import JetsonEntity
+from .entity import JetsonEntity, JetsonNamedEntity
 from .models import equipment_identifier, mapping, optional_text
 
 
@@ -42,7 +41,7 @@ async def async_setup_entry(
 
 
 class JetsonZoneConnectivity(JetsonEntity, BinarySensorEntity):
-    _attr_name = "Zone connection"
+    _attr_translation_key = "zone_connection"
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -65,9 +64,8 @@ class JetsonZoneConnectivity(JetsonEntity, BinarySensorEntity):
         return {"issues": issues, "issue_count": len(issues) if issues is not None else None}
 
 
-class JetsonConnectivity(CoordinatorEntity[JetsonCoordinator], BinarySensorEntity):
-    _attr_has_entity_name = True
-    _attr_name = "Connection"
+class JetsonConnectivity(JetsonNamedEntity, BinarySensorEntity):
+    _attr_translation_key = "equipment_connection"
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -78,6 +76,7 @@ class JetsonConnectivity(CoordinatorEntity[JetsonCoordinator], BinarySensorEntit
         self.key = equipment_identifier(system_id, equipment_id)
         self._attr_unique_id = f"{self.key}:connectivity"
         self._initial_device_info = coordinator.device_infos[self.key]
+        self._update_equipment_name()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -92,15 +91,19 @@ class JetsonConnectivity(CoordinatorEntity[JetsonCoordinator], BinarySensorEntit
             else None
         )
 
-    @property
-    def name(self) -> str:
+    def _update_equipment_name(self) -> None:
         equipment = self.equipment or {}
         label = (
             optional_text(equipment.get("name"))
             or optional_text(equipment.get("type"))
-            or "Equipment"
+            or self.equipment_id
         )
-        return f"{label} connection"
+        self._set_name_placeholders(equipment=label)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._update_equipment_name()
+        super()._handle_coordinator_update()
 
     @property
     def available(self) -> bool:

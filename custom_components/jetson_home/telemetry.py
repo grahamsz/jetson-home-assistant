@@ -12,6 +12,19 @@ OPERATION_FIELDS = {
     "fanOperatingMode": ("Fan operating mode", False),
 }
 
+SPEED_OPERATION_OPTIONS = {
+    "fanSpeedStatus": ("0", "1", "2", "3"),
+    "fanSpeedSetpoint": ("1", "2", "3"),
+}
+
+
+def operation_speed_state(status: dict, field: str) -> str | None:
+    value = number(mapping(status.get("operation")).get(field))
+    if value is None or not value.is_integer():
+        return None
+    state = str(int(value))
+    return state if state in SPEED_OPERATION_OPTIONS.get(field, ()) else None
+
 
 def operation_value(status: dict, field: str) -> str | float | None:
     if field not in OPERATION_FIELDS:

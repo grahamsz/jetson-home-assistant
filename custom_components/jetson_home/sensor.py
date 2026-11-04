@@ -21,6 +21,8 @@ STATUS_SENSORS = {
     "hvac_mode": ("HVAC mode", "mdi:thermostat"),
     "fan_mode": ("Fan mode", "mdi:fan"),
     "hvac_activity": ("HVAC activity", "mdi:heat-pump"),
+    "fan_activity": ("Fan activity", "mdi:fan"),
+    "fan_speed": ("Fan speed", "mdi:fan-speed-1"),
 }
 
 POLLUTANTS = {
@@ -60,6 +62,8 @@ async def async_setup_entry(
                 ("hvac_mode", bool(zone.ambient)),
                 ("hvac_activity", bool(zone.ambient)),
                 ("fan_mode", bool(zone.circulation)),
+                ("fan_activity", bool(zone.circulation)),
+                ("fan_speed", "fanSpeedStatus" in zone.circulation),
             ):
                 if present and (key, kind) not in known:
                     known.add((key, kind))
@@ -93,6 +97,15 @@ async def async_setup_entry(
                                 coordinator, system.system_id, load_key, energy=energy
                             )
                         )
+            for load_key in EnergyView(system.energy).heat_strip_loads:
+                key = (system.system_id, load_key, "heat_strips")
+                if key not in known_energy:
+                    known_energy.add(key)
+                    entities.append(
+                        JetsonEnergySensor(
+                            coordinator, system.system_id, load_key, energy=False, heat_strips=True
+                        )
+                    )
         async_add_entities(entities)
 
     discover()
@@ -106,7 +119,7 @@ class JetsonSensor(JetsonEntity, SensorEntity):
         super().__init__(coordinator, zone)
         self.kind = kind
         self._attr_unique_id = f"{zone.key}:{kind}"
-        self._attr_name = "Temperature" if kind == "temperature" else "Humidity"
+        self._attr_translation_key = kind
         self._attr_device_class = (
             SensorDeviceClass.TEMPERATURE if kind == "temperature" else SensorDeviceClass.HUMIDITY
         )
@@ -137,12 +150,13 @@ class JetsonStatusSensor(JetsonEntity, SensorEntity):
         super().__init__(coordinator, zone)
         self.kind = kind
         self._attr_unique_id = f"{zone.key}:{kind}"
-        self._attr_name, self._attr_icon = STATUS_SENSORS[kind]
+        self._attr_translation_key = kind
+        self._attr_icon = STATUS_SENSORS[kind][1]
         self._attr_options = list(STATUS_SENSOR_OPTIONS[kind])
 
     @property
     def available(self) -> bool:
-        feature = self.zone.circulation if self.kind == "fan_mode" else self.zone.ambient
+        feature = self.zone.circulation if self.kind.startswith("fan_") else self.zone.ambient
         return super().available and bool(feature)
 
     @property
@@ -157,14 +171,12 @@ class JetsonAirQualitySensor(JetsonEntity, SensorEntity):
         super().__init__(coordinator, zone)
         self.kind = kind
         self._attr_unique_id = f"{zone.key}:air_quality:{kind}"
+        self._attr_translation_key = "air_quality" if kind == "overall" else kind
         if kind == "overall":
-            self._attr_name = "Air quality"
             self._attr_device_class = SensorDeviceClass.ENUM
             self._attr_options = list(AIR_QUALITY_LEVELS)
         else:
-            self._attr_name, self._attr_device_class, self._attr_native_unit_of_measurement = (
-                POLLUTANTS[kind]
-            )
+            _, self._attr_device_class, self._attr_native_unit_of_measurement = POLLUTANTS[kind]
             self._attr_state_class = SensorStateClass.MEASUREMENT
 
     @property

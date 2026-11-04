@@ -7,12 +7,13 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import JetsonAuthError, JetsonClient, JetsonError
 from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .devices import sync_devices
+from .errors import user_error
 from .models import Snapshot, Zone
 from .polling import JetsonPoller
 
@@ -47,7 +48,9 @@ class JetsonCoordinator(DataUpdateCoordinator[Snapshot]):
             self._sync_configuration(snapshot)
             return snapshot
         except JetsonAuthError as err:
-            raise ConfigEntryAuthFailed("Sign in to Jetson Home again") from err
+            raise ConfigEntryAuthFailed(
+                translation_domain=DOMAIN, translation_key="reauth_required"
+            ) from err
         except JetsonError as err:
             raise UpdateFailed(str(err)) from err
 
@@ -62,13 +65,13 @@ class JetsonCoordinator(DataUpdateCoordinator[Snapshot]):
         async with self.command_lock:
             current = self.data.zones.get(zone.key)
             if not self.last_update_success or current is None or not current.online:
-                raise HomeAssistantError("Jetson zone is unavailable")
+                raise user_error("zone_unavailable")
             try:
                 await getattr(self.client, method)(zone.zone_id, value)
             except JetsonAuthError as err:
                 self.config_entry.async_start_reauth(self.hass)
-                raise HomeAssistantError("Sign in to Jetson Home again") from err
+                raise user_error("reauth_required") from err
             except JetsonError as err:
-                raise HomeAssistantError(str(err)) from err
+                raise user_error("command_failed", error=str(err)) from err
         # Report confirmed API state; cloud propagation may require another poll.
         await self.async_request_refresh()

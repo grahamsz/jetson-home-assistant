@@ -13,7 +13,7 @@
   "paths": {
     "/v1/systems/{systemId}/energy/current": {
       "get": {
-        "summary": "Current whole-home and per-load power and calendar-day energy",
+        "summary": "Current Main and per-load power and calendar-day energy",
         "description": "HTTP 200 and this response structure were observed in authorized account reads on November 3\u20134, 2026 (America/Denver). This is a sample-derived description, not a complete vendor contract.",
         "security": [
           {
@@ -416,7 +416,7 @@
               }
             },
             "additionalProperties": true,
-            "description": "Optional, absent in the offline outdoor-unit response. Numeric units and complete string enums are unestablished."
+            "description": "Optional, absent in the offline outdoor-unit response. User-confirmed fan speed labels are 1=Low, 2=Medium, 3=High; current speed 0 means stopped. Fan-level scale and complete string enums remain unestablished."
           }
         },
         "additionalProperties": true,

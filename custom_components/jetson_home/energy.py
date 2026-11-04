@@ -38,6 +38,17 @@ class EnergyView:
     def updated_at(self, energy: bool = False) -> datetime | None:
         return timestamp(mapping(self.data.get("today" if energy else "live")).get("asOf"))
 
+    @property
+    def heat_strip_loads(self) -> set[str]:
+        live = mapping(mapping(self.data.get("live")).get("loads"))
+        return {key for key in self.loads if "heatStripsPowerW" in mapping(live.get(key))}
+
+    def heat_strip_power(self, load_key: str | None) -> float | None:
+        if load_key not in self.loads:
+            return None
+        live = mapping(mapping(self.data.get("live")).get("loads"))
+        return number(mapping(live.get(load_key)).get("heatStripsPowerW"))
+
     def is_fresh(self, now: datetime, max_age: float, *, energy: bool = False) -> bool:
         observed = self.updated_at(energy)
         return observed is not None and -60 <= (now - observed).total_seconds() <= max_age

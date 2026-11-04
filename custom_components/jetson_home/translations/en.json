@@ -1,16 +1,19 @@
 {
-  "title": "Jetson Home",
   "config": {
     "step": {
       "user": {
         "title": "Connect Jetson Home",
         "description": "Use the email address registered in the Jetson Home app. Continuing requests a sign-in email from Jetson.",
-        "data": {"email": "Email address"}
+        "data": {
+          "email": "Email address"
+        }
       },
       "magic_link": {
         "title": "Verify your sign-in",
         "description": "Jetson sent a link to {email}. Copy the sign-in link from the email without opening it, then paste it here. You can also paste only its token parameter. Links may expire or be single use. This integration is experimental and requires Jetson's cloud.",
-        "data": {"magic_link": "Sign-in link or token"}
+        "data": {
+          "magic_link": "Sign-in link or token"
+        }
       },
       "reauth_confirm": {
         "title": "Sign in to Jetson Home again",
@@ -50,12 +53,321 @@
       "polling": {
         "title": "Polling interval",
         "description": "Update known zones, available air quality, power/energy readings, and heat-pump operation every 30 to 900 seconds. Equipment connection status is checked with the next update once five minutes have passed. Use Refresh configuration after changing installed equipment or zones.",
-        "data": {"scan_interval": "Polling interval (seconds)"}
+        "data": {
+          "scan_interval": "Polling interval (seconds)"
+        }
       },
       "refresh_configuration": {
         "title": "Refresh configuration",
         "description": "Check for added, removed, or renamed systems, hubs, equipment, and zones. Your sign-in and polling settings are kept."
       }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "temperature": {
+        "name": "{zone} temperature"
+      },
+      "humidity": {
+        "name": "{zone} humidity"
+      },
+      "hvac_mode": {
+        "name": "{zone} HVAC mode",
+        "state": {
+          "off": "Off",
+          "heat": "Heat",
+          "cool": "Cool",
+          "heat_cool": "Auto",
+          "fan_only": "Fan only"
+        }
+      },
+      "fan_mode": {
+        "name": "{zone} fan mode",
+        "state": {
+          "auto": "Auto",
+          "1": "Low",
+          "2": "Medium",
+          "3": "High"
+        }
+      },
+      "hvac_activity": {
+        "name": "{zone} HVAC activity",
+        "state": {
+          "off": "Off",
+          "idle": "Idle",
+          "heating": "Heating",
+          "cooling": "Cooling",
+          "fan": "Fan running",
+          "drying": "Dehumidifying"
+        }
+      },
+      "fan_activity": {
+        "name": "{zone} fan activity",
+        "state": {
+          "off": "Off",
+          "running": "Running"
+        }
+      },
+      "fan_speed": {
+        "name": "{zone} fan speed",
+        "state": {
+          "0": "Off",
+          "1": "Low",
+          "2": "Medium",
+          "3": "High"
+        }
+      },
+      "air_quality": {
+        "name": "{zone} air quality",
+        "state": {
+          "excellent": "Excellent",
+          "good": "Good",
+          "fair": "Fair",
+          "poor": "Poor",
+          "unhealthy": "Unhealthy"
+        },
+        "state_attributes": {
+          "last_updated_at": {
+            "name": "Last sample update"
+          },
+          "access": {
+            "name": "Access",
+            "state": {
+              "full": "Full",
+              "limited": "Limited"
+            }
+          },
+          "missing_entitlement": {
+            "name": "Missing subscription"
+          }
+        }
+      },
+      "co2": {
+        "name": "{zone} CO₂",
+        "state_attributes": {
+          "last_updated_at": {
+            "name": "Last sample update"
+          },
+          "measured_at": {
+            "name": "Measured at"
+          },
+          "settling": {
+            "name": "Sensor settling"
+          }
+        }
+      },
+      "pm25": {
+        "name": "{zone} PM2.5",
+        "state_attributes": {
+          "last_updated_at": {
+            "name": "Last sample update"
+          },
+          "measured_at": {
+            "name": "Measured at"
+          },
+          "settling": {
+            "name": "Sensor settling"
+          }
+        }
+      },
+      "tvoc": {
+        "name": "{zone} TVOC",
+        "state_attributes": {
+          "last_updated_at": {
+            "name": "Last sample update"
+          },
+          "measured_at": {
+            "name": "Measured at"
+          },
+          "settling": {
+            "name": "Sensor settling"
+          }
+        }
+      },
+      "telemetry_status": {
+        "name": "{zone} telemetry status"
+      },
+      "observed_at": {
+        "name": "{zone} last device reading"
+      },
+      "main_power": {
+        "name": "Main power",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Source updated at"
+          }
+        }
+      },
+      "main_energy_today": {
+        "name": "Main energy today",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Source updated at"
+          },
+          "source_timezone": {
+            "name": "Source time zone"
+          },
+          "period_date": {
+            "name": "Period date"
+          }
+        }
+      },
+      "load_power": {
+        "name": "{load} load power",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Source updated at"
+          }
+        }
+      },
+      "load_energy_today": {
+        "name": "{load} load energy today",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Source updated at"
+          },
+          "source_timezone": {
+            "name": "Source time zone"
+          },
+          "period_date": {
+            "name": "Period date"
+          }
+        }
+      },
+      "heat_strips_power": {
+        "name": "{load} heat strips power",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Source updated at"
+          }
+        }
+      },
+      "operation_mode": {
+        "name": "{equipment} unit mode"
+      },
+      "operation_status": {
+        "name": "{equipment} unit activity"
+      },
+      "operation_fanspeedstatus": {
+        "name": "{equipment} fan speed status",
+        "state": {
+          "0": "Off",
+          "1": "Low",
+          "2": "Medium",
+          "3": "High"
+        },
+        "state_attributes": {
+          "raw_value": {
+            "name": "Raw reported value"
+          }
+        }
+      },
+      "operation_fanspeedsetpoint": {
+        "name": "{equipment} fan speed setpoint",
+        "state": {
+          "1": "Low",
+          "2": "Medium",
+          "3": "High"
+        },
+        "state_attributes": {
+          "raw_value": {
+            "name": "Raw reported value"
+          }
+        }
+      },
+      "operation_fanlevelstatus": {
+        "name": "{equipment} fan level"
+      },
+      "operation_fanlevelsetting": {
+        "name": "{equipment} fan level setting"
+      },
+      "operation_fanoperatingmode": {
+        "name": "{equipment} fan operating mode"
+      }
+    },
+    "binary_sensor": {
+      "zone_connection": {
+        "name": "{zone} zone connection",
+        "state_attributes": {
+          "issues": {
+            "name": "Connection issues"
+          },
+          "issue_count": {
+            "name": "Issue count"
+          }
+        }
+      },
+      "equipment_connection": {
+        "name": "{equipment} connection"
+      }
+    },
+    "climate": {
+      "thermostat": {
+        "name": "{zone}",
+        "state_attributes": {
+          "fan_mode": {
+            "name": "Fan mode",
+            "state": {
+              "auto": "Auto",
+              "1": "Low",
+              "2": "Medium",
+              "3": "High"
+            }
+          },
+          "jetson_mode": {
+            "name": "Reported Jetson mode"
+          },
+          "jetson_status": {
+            "name": "Reported Jetson activity"
+          },
+          "heat_target_celsius": {
+            "name": "Heating target (°C)"
+          },
+          "cool_target_celsius": {
+            "name": "Cooling target (°C)"
+          }
+        }
+      }
+    },
+    "humidifier": {
+      "humidifier": {
+        "name": "{zone} humidifier"
+      }
+    }
+  },
+  "exceptions": {
+    "unsupported_hvac_mode": {
+      "message": "Unsupported Jetson HVAC mode."
+    },
+    "unsupported_split_targets": {
+      "message": "Separate heat/cool targets are not supported by this integration."
+    },
+    "temperature_out_of_range": {
+      "message": "Temperature is outside the zone’s supported range."
+    },
+    "rounded_temperature_out_of_range": {
+      "message": "Rounded temperature exceeds the supported range."
+    },
+    "unsupported_fan_speed": {
+      "message": "Unsupported fan speed for this zone."
+    },
+    "unsupported_humidifier": {
+      "message": "This zone does not advertise humidifier control."
+    },
+    "humidity_out_of_range": {
+      "message": "Humidity is outside the zone’s supported range."
+    },
+    "rounded_humidity_out_of_range": {
+      "message": "Rounded humidity exceeds the supported range."
+    },
+    "zone_unavailable": {
+      "message": "Jetson zone is unavailable."
+    },
+    "reauth_required": {
+      "message": "Sign in to Jetson Home again."
+    },
+    "command_failed": {
+      "message": "Jetson could not complete the command: {error}"
     }
   }
 }

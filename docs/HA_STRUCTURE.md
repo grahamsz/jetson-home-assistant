@@ -11,7 +11,7 @@ flowchart TD
     S --> H[Main HVAC mode / fan mode / activity history]
     S --> Q[Main air quality / permitted pollutant readings]
     S --> D[Named heat-pump / monitor / thermostat connection diagnostics]
-    S --> E[Whole-home and named-load power / daily energy]
+    S --> E[Main and named-load power / daily energy]
     S --> T[Zone freshness / reported unit-operation diagnostics]
 ```
 
@@ -39,7 +39,7 @@ The system device ID is retained when its prior record exists. Migration is idem
 | Climate control | One named climate entity per zone | Climate platform, Celsius internally |
 | Current temperature | Zone-named sensor | Temperature / measurement / °C |
 | Current relative humidity | Zone-named sensor | Humidity / measurement / % |
-| HVAC mode / Fan mode / HVAC activity | Zone-named history sensors | Enum, read-only; see [history](HISTORY.md) |
+| HVAC mode / Fan mode / HVAC activity / Fan activity / Fan speed | Zone-named history sensors | Enum, read-only; see [history](HISTORY.md) |
 | Optional humidifier control | Zone-named control | Enabled only by advertised capability |
 | Overall air-quality level | Zone-named sensor | Enum: excellent, good, fair, poor, unhealthy |
 | CO₂ | Zone-named sensor | CO₂ / measurement / ppm |
@@ -48,9 +48,10 @@ The system device ID is retained when its prior record exists. Migration is idem
 | Equipment connection | Equipment-named diagnostic | Connectivity binary sensor |
 | Zone connection / issues | Zone-named diagnostic; issues and issue count are attributes | Connectivity binary sensor |
 | Telemetry status / Last device reading | Zone-named diagnostics | Plain text / timestamp |
-| Heat-pump operation fields | Equipment-named diagnostics; only reported fields appear | Text or dimensionless number; no invented RPM/% units |
-| Whole-home / per-load power | System or reported load name | Power / measurement / W |
-| Whole-home / per-load energy today | System or reported load name | Energy / total with explicit local-midnight reset / kWh |
+| Heat-pump operation fields | Equipment-named diagnostics; only reported fields appear | Fan speeds show Off/Low/Medium/High where applicable; other fields retain their reported values |
+| Main / per-load power | System or reported load name | Power / measurement / W |
+| Main / per-load energy today | System or reported load name | Energy / total with explicit local-midnight reset / kWh |
+| Heat strips power | Reported load name | Power / measurement / W; independent sensor, no inferred energy counter |
 
 The air-quality endpoint is `GET /v1/zones/{zoneId}/airQuality`. It has no physical source-equipment ID. Consolidating the UI does not change that scope: each zone aggregate is exposed once, rather than being attributed to a particular return-air monitor or copied to every installed monitor. The poller associates reported Sensor/TEMCO-AQM equipment using explicit zone/equipment membership or a parent's zone membership when the peripheral has none. An explicit assignment to a different zone is not overridden.
 
@@ -76,9 +77,9 @@ Inventory errors retain last-good optional data and make affected connectivity r
 
 ## Power and daily energy
 
-Version 0.5.0 reads `GET /v1/systems/{systemId}/energy/current` once per system with a discovered EnergyMonitor. The confirmed response supplies whole-home power and daily energy, plus named load values keyed by reported load identifiers. All sensors share the system device. Null/missing values remain unknown; optional request failures and stale timestamps make the readings unavailable.
+Version 0.5.0 reads `GET /v1/systems/{systemId}/energy/current` once per system with a discovered EnergyMonitor. The confirmed response supplies Main power and daily energy, plus named load values keyed by reported load identifiers. All sensors share the system device. Null/missing values remain unknown; optional request failures and stale timestamps make the readings unavailable.
 
-Daily energy uses HA's `total` state class with an explicit reset derived from the API's date and IANA timezone. This accommodates within-day corrections; a calendar-day reset was observed live across local midnight. Per-load identities use reported keys rather than guessing from names. The whole-home total is exposed once; load totals, residuals, and unverified heat-strip components are not added to it. Whole-home and per-load energy can serve different Energy-dashboard roles, so avoid configuring overlapping readings as independent home consumption sources. Recorder/Energy behavior still needs validation in HA. See [energy details](ENERGY.md).
+Daily energy uses HA's `total` state class with an explicit reset derived from the API's date and IANA timezone. This accommodates within-day corrections; a calendar-day reset was observed live across local midnight. Per-load identities use reported keys rather than guessing from names. The Main total is exposed once; load totals, residuals, and separately exposed heat-strip power are not added to it. Main describes the monitored source, not whole-home consumption. Avoid overlapping readings when configuring equipment/circuit consumption in the Energy dashboard. Recorder/Energy behavior still needs validation in HA. See [energy details](ENERGY.md).
 
 The AWS IoT MQTT provisioning schema is specifically for EM-001. It does not establish a readable Emporia Vue 3 stream or subscription. The explicit OCPP WebSocket field belongs to the EV charger; see [transport findings](API.md#realtime-updates-websocket-sse-and-mqtt).
 

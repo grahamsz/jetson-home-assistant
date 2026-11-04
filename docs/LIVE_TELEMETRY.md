@@ -6,7 +6,7 @@ Authorized reads on November 3–4, 2026 returned fields absent from the recover
 
 `GET /v1/zones/{zoneId}/status` returned:
 
-| Field | HA representation in 0.5.0 |
+| Field | HA representation |
 | --- | --- |
 | `connectivity.connectionStatus` | Zone connection diagnostic binary sensor; fresh value takes priority over cached system health |
 | `connectivity.issues` | issues and issue_count attributes on that connection entity; nonempty item structure remains unknown |
@@ -23,13 +23,15 @@ These use the already-polled zone response and add no requests. Connection and f
 | --- | --- | --- |
 | `mode` | Unit mode | Reported string |
 | `status` | Unit activity | Reported string |
-| `fanSpeedStatus` | Fan speed status | Number, units unestablished |
-| `fanSpeedSetpoint` | Fan speed setpoint | Number, units unestablished |
+| `fanSpeedStatus` | Fan speed status | Enum displaying 0=Off, 1=Low, 2=Medium, 3=High |
+| `fanSpeedSetpoint` | Fan speed setpoint | Enum displaying 1=Low, 2=Medium, 3=High |
 | `fanLevelStatus` | Fan level | Number, scale unestablished |
 | `fanLevelSetting` | Fan level setting | Number, scale unestablished |
 | `fanOperatingMode` | Fan operating mode | Reported string; constantAirflow observed |
 
-The indoor unit reported mode/status Off while the zone remained configured for Heat, which is why controller operation and selected thermostat mode are separate entities. Numeric fan values are not labeled as RPM, percentages, airflow, or pressure without evidence. No unit-level controls are added. Missing operation fields do not become zeros or off states.
+The indoor unit reported mode/status Off while the zone remained configured for Heat, which is why controller operation and selected thermostat mode are separate entities. The user confirmed the Low/Medium/High speed mapping; these are discrete speeds, not RPM, percentages, airflow, or pressure. The level fields remain numeric because their scale is not established. The speed enums retain numeric string states for history/automations and expose `raw_value` for inspection. Unexpected speed values remain unknown rather than receiving a guessed label. No unit-level controls are added. Missing operation fields do not become zeros or off states.
+
+Version 0.6.0 also exposes zone Fan activity (Off/Running) and Fan speed (Off/Low/Medium/High), separate from the selected Fan mode. They use the already-read `features.circulation` response and add no requests. See [fan history and source precedence](HISTORY.md).
 
 Known HeatPumpIdu/HeatPumpOdu equipment is polled at the normal reading interval. A legacy HeatPump aggregate is used only when component types are absent, avoiding duplicate operation sensors for the same system. Each failure is isolated from climate/energy; absent/offline fields make the affected operation entities unavailable.
 

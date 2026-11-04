@@ -24,6 +24,8 @@ STATUS_SENSOR_OPTIONS = {
     "hvac_mode": tuple(HVAC_MODE_STATES.values()),
     "fan_mode": ("auto", "1", "2", "3"),
     "hvac_activity": ("off", "idle", *HVAC_ACTIVITY_STATES.values()),
+    "fan_activity": ("off", "running"),
+    "fan_speed": ("0", "1", "2", "3"),
 }
 
 
@@ -196,6 +198,20 @@ class Zone:
             return "auto"
         speed = number(value)
         return str(int(speed)) if speed in (1, 2, 3) else None
+
+    @property
+    def fan_speed_state(self) -> str | None:
+        speed = number(self.circulation.get("fanSpeedStatus"))
+        return str(int(speed)) if speed in (0, 1, 2, 3) else None
+
+    @property
+    def fan_activity_state(self) -> str | None:
+        # Current speed reports actual operation, independently of the selected
+        # speed or scheduled circulation mode. Do not turn unknown data into Off.
+        if "fanSpeedStatus" in self.circulation:
+            speed = self.fan_speed_state
+            return None if speed is None else "off" if speed == "0" else "running"
+        return {"Off": "off", "Circulating": "running"}.get(self.circulation.get("status"))
 
     @property
     def air_quality_access(self) -> str | None:

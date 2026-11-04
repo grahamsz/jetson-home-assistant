@@ -10,7 +10,7 @@ Experimental custom integration built by reverse engineering the user-supplied J
 - Temperature and relative-humidity sensors when those features are reported.
 - One Home Assistant device per Jetson system, containing all its zone controls/readings and named equipment-connectivity diagnostics. Multiple systems remain separate.
 - Separate HVAC mode, fan mode, and HVAC activity sensors for Recorder/history, with no additional API calls.
-- Whole-home and named per-load power/daily-energy sensors, with source timestamps and local-midnight energy resets.
+- Main and named per-load power/daily-energy sensors, plus separate heat-strip watts, with source timestamps and local-midnight energy resets.
 - Zone connection/issues, telemetry status, last device-reading time, and reported per-unit operation/fan diagnostics.
 - Zone air-quality classification, plus CO₂, PM2.5, and TVOC measurements when a matching monitor and full API access are reported. Restricted access exposes only the overall classification.
 - An optional humidifier entity with on/off and target percentage, only when the zone advertises `Humidify` capability and valid limits.
@@ -19,9 +19,9 @@ Experimental custom integration built by reverse engineering the user-supplied J
 - [Home Assistant device/entity structure](docs/HA_STRUCTURE.md), including power, energy, and diagnostic sensors.
 - [Live energy API and HA mapping](docs/ENERGY.md), [new status fields and pressure findings](docs/LIVE_TELEMETRY.md), and a [live OpenAPI supplement](docs/live-openapi.json).
 
-**Status (prototype 0.5.0):** 109 protocol/model/polling/migration/telemetry tests pass, using a local HTTP mock server and in-memory registry adapters. Authorized live reads established populated inventory, zone and heat-pump status, full air-quality access, and the current energy route on November 3–4, 2026. A calendar-day energy reset was observed across local midnight. Earlier auth/empty-account responses matched recovered schemas. HA entity loading, consolidation, Recorder/Energy statistics, and physical controls still need runtime checks. See [validation scope](docs/VALIDATION.md).
+**Status (prototype 0.6.0):** 126 protocol/model/polling/migration/telemetry tests pass, using a local HTTP mock server and in-memory registry adapters. Authorized live reads established populated inventory, zone and heat-pump status, full air-quality access, and the current energy route on November 3–4, 2026. A calendar-day energy reset was observed across local midnight. Earlier auth/empty-account responses matched recovered schemas. HA entity loading, consolidation, Recorder/Energy statistics, and physical controls still need runtime checks. See [validation scope](docs/VALIDATION.md).
 
-Version 0.5.0 adds power/energy and the newer device telemetry fields. It also includes the user's stale-AQ fix: readings older than one hour, settling pollutants, and invalid/missing/future timestamps are unavailable. An idle fan alone does not invalidate recent measurements. See [energy](docs/ENERGY.md) and [live telemetry](docs/LIVE_TELEMETRY.md).
+Version 0.6.0 renames the primary readings Main power/Main energy today, adds separate heat-strip power and fan activity/current-speed history, and labels fan speeds Low/Medium/High. Setup, options, entity names, enum states, and control errors are available in English, Spanish, and French. The stale-AQ fix remains: readings older than one hour, settling pollutants, and invalid/missing/future timestamps are unavailable. An idle fan alone does not invalidate recent measurements. See [energy](docs/ENERGY.md), [fan history](docs/HISTORY.md), and [localization](docs/LOCALIZATION.md).
 
 Version 0.4.0 consolidates the earlier hub/equipment/zone rows under the existing system device, moves registered entities before removing empty old rows, and keeps entity IDs. Zone and equipment names distinguish the combined device's entities. Device-based automations referring to removed device IDs need their device selected again; entity-based references keep their IDs. See [grouping and migration](docs/HA_STRUCTURE.md) and [history sensors](docs/HISTORY.md).
 
@@ -60,7 +60,7 @@ Each API system is one service device named for the system. Its climate entities
 
 Air-quality telemetry comes from a **zone** endpoint without a physical source ID. It is shown as a zone-named reading on the system device, without copying it onto each installed monitor. Detailed pollutant values require `access: full`; Jetson's limited response exposes only the overall level. The overall sensor's attributes show `access` and, when reported, `missing_entitlement: jetson_care`. Account diagnostics include the access state and whether the request failed. An API error or null measurement is never reported as zero.
 
-Power and daily-energy readings now use the confirmed energy/current endpoint. The root whole-home total is exposed once, and named load readings remain separate. Daily kWh sensors use total plus an explicit timezone-aware reset; source freshness and invalid values are checked. Backend residuals and unverified heat-strip components are not added to totals. Choose appropriate energy sources in the Energy dashboard and verify statistics in your instance; see [energy mapping and caveats](docs/ENERGY.md).
+Power and daily-energy readings use the confirmed energy/current endpoint. The Main total represents the monitored circuits, not whole-home usage. Named load and heat-strip readings remain separate. Daily kWh sensors use total plus an explicit timezone-aware reset; source freshness and invalid values are checked. Residual, load, and heat-strip values are not added to Main totals. Choose appropriate equipment/circuit sources in the Energy dashboard and verify statistics in your instance; see [energy mapping and caveats](docs/ENERGY.md).
 
 ## Humidity
 

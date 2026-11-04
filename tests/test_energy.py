@@ -11,7 +11,7 @@ class EnergyTests(unittest.TestCase):
         self.data = sample_energy()
         self.view = energy.EnergyView(self.data)
 
-    def test_whole_home_and_keyed_loads_are_separate(self):
+    def test_main_and_keyed_loads_are_separate(self):
         self.assertEqual(self.view.value(None), 1000)
         self.assertEqual(self.view.value("hp1"), 125.5)
         self.assertEqual(self.view.value(None, energy=True), 3.5)
@@ -25,6 +25,20 @@ class EnergyTests(unittest.TestCase):
         self.assertEqual(self.view.value(None, energy=True), 3.5)
         self.assertNotIn("heatStripsPowerW", self.view.loads)
         self.assertIsNone(self.view.value("residualEnergyKwh", energy=True))
+        self.assertEqual(self.view.heat_strip_power("hp1"), 5)
+        self.assertEqual(self.view.heat_strip_loads, {"hp1"})
+
+    def test_heat_strip_zero_null_and_missing_are_distinct(self):
+        load = self.data["live"]["loads"]["hp1"]
+        for value, expected in ((0, 0), (None, None), (True, None), ("5", None)):
+            load["heatStripsPowerW"] = value
+            self.assertEqual(self.view.heat_strip_power("hp1"), expected)
+            self.assertIn("hp1", self.view.heat_strip_loads)
+        del load["heatStripsPowerW"]
+        self.assertNotIn("hp1", self.view.heat_strip_loads)
+        self.assertIsNone(self.view.heat_strip_power("hp1"))
+        self.assertIsNone(self.view.heat_strip_power("missing"))
+        self.assertIsNone(self.view.heat_strip_power(None))
 
     def test_null_missing_and_zero_are_distinct(self):
         for raw, expected in ((None, None), (0, 0)):

@@ -10,7 +10,7 @@ from .polling import CONNECTIVITY_INTERVAL
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     coordinator = entry.runtime_data
     return {
-        "integration_version": "0.5.0",
+        "integration_version": "0.6.0",
         "device_grouping": "one_per_system",
         "last_update_success": coordinator.last_update_success,
         "scan_interval_seconds": coordinator.update_interval.total_seconds(),

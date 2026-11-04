@@ -1,0 +1,373 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connecter Jetson Home",
+        "description": "Utilisez l’adresse courriel enregistrée dans l’application Jetson Home. En continuant, vous demanderez à Jetson de vous envoyer un courriel de connexion.",
+        "data": {
+          "email": "Adresse courriel"
+        }
+      },
+      "magic_link": {
+        "title": "Confirmer la connexion",
+        "description": "Jetson a envoyé un lien à {email}. Copiez le lien du courriel sans l’ouvrir, puis collez-le ici. Vous pouvez aussi coller uniquement son paramètre token. Les liens peuvent expirer ou être à usage unique. Cette intégration est expérimentale et nécessite le nuage de Jetson.",
+        "data": {
+          "magic_link": "Lien ou jeton de connexion"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Se reconnecter à Jetson Home",
+        "description": "Continuez pour demander un nouveau courriel de connexion pour {email}."
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de joindre Jetson, ou la réponse est inattendue. Réessayez. Si le lien a expiré, recommencez la configuration pour recevoir un nouveau courriel.",
+      "invalid_auth": "Le lien ou le jeton de connexion a été refusé. Utilisez un nouveau lien pour la même adresse courriel.",
+      "invalid_email": "Saisissez une adresse courriel valide."
+    },
+    "abort": {
+      "already_configured": "Ce compte Jetson est déjà configuré.",
+      "wrong_account": "Connectez-vous avec le compte Jetson utilisé pour cette intégration.",
+      "reauth_successful": "La connexion à Jetson Home a été mise à jour."
+    }
+  },
+  "options": {
+    "error": {
+      "invalid_interval": "Saisissez un nombre entier de 30 à 900 secondes.",
+      "cannot_refresh": "Impossible de joindre Jetson, ou la réponse est inattendue. La configuration précédente est conservée. Soumettez de nouveau pour réessayer.",
+      "refresh_incomplete": "Certains détails des équipements ou du concentrateur n’ont pas pu être actualisés. Les mesures disponibles continuent de se mettre à jour. Soumettez de nouveau pour réessayer.",
+      "not_loaded": "Chargez ou rechargez l’intégration Jetson Home avant d’actualiser sa configuration."
+    },
+    "abort": {
+      "configuration_refreshed": "La configuration de Jetson Home a été actualisée. Les changements aux systèmes, concentrateurs, équipements et zones ont été vérifiés.",
+      "reauth_required": "Reconnectez-vous à Jetson Home, puis actualisez la configuration."
+    },
+    "step": {
+      "init": {
+        "title": "Options de Jetson Home",
+        "menu_options": {
+          "polling": "Intervalle d’actualisation",
+          "refresh_configuration": "Actualiser la configuration"
+        }
+      },
+      "polling": {
+        "title": "Intervalle d’actualisation",
+        "description": "Actualisez les zones connues, les mesures disponibles de qualité de l’air, de puissance et d’énergie, et le fonctionnement de la thermopompe toutes les 30 à 900 secondes. La connexion des équipements est vérifiée à la prochaine actualisation après cinq minutes. Utilisez Actualiser la configuration après un changement d’équipement ou de zone.",
+        "data": {
+          "scan_interval": "Intervalle d’actualisation (secondes)"
+        }
+      },
+      "refresh_configuration": {
+        "title": "Actualiser la configuration",
+        "description": "Vérifiez les ajouts, suppressions ou changements de nom des systèmes, concentrateurs, équipements et zones. La connexion au compte et les paramètres d’actualisation sont conservés."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "temperature": {
+        "name": "Température de {zone}"
+      },
+      "humidity": {
+        "name": "Humidité de {zone}"
+      },
+      "hvac_mode": {
+        "name": "Mode de climatisation de {zone}",
+        "state": {
+          "off": "Arrêt",
+          "heat": "Chauffage",
+          "cool": "Climatisation",
+          "heat_cool": "Automatique",
+          "fan_only": "Ventilation seulement"
+        }
+      },
+      "fan_mode": {
+        "name": "Mode du ventilateur de {zone}",
+        "state": {
+          "auto": "Automatique",
+          "1": "Basse",
+          "2": "Moyenne",
+          "3": "Élevée"
+        }
+      },
+      "hvac_activity": {
+        "name": "Activité de climatisation de {zone}",
+        "state": {
+          "off": "Arrêt",
+          "idle": "En attente",
+          "heating": "Chauffage en cours",
+          "cooling": "Climatisation en cours",
+          "fan": "Ventilation en cours",
+          "drying": "Déshumidification en cours"
+        }
+      },
+      "fan_activity": {
+        "name": "Activité du ventilateur de {zone}",
+        "state": {
+          "off": "Arrêt",
+          "running": "En marche"
+        }
+      },
+      "fan_speed": {
+        "name": "Vitesse du ventilateur de {zone}",
+        "state": {
+          "0": "Arrêt",
+          "1": "Basse",
+          "2": "Moyenne",
+          "3": "Élevée"
+        }
+      },
+      "air_quality": {
+        "name": "Qualité de l’air de {zone}",
+        "state": {
+          "excellent": "Excellente",
+          "good": "Bonne",
+          "fair": "Acceptable",
+          "poor": "Mauvaise",
+          "unhealthy": "Malsaine"
+        },
+        "state_attributes": {
+          "last_updated_at": {
+            "name": "Dernière actualisation de l’échantillon"
+          },
+          "access": {
+            "name": "Accès",
+            "state": {
+              "full": "Complet",
+              "limited": "Limité"
+            }
+          },
+          "missing_entitlement": {
+            "name": "Abonnement requis"
+          }
+        }
+      },
+      "co2": {
+        "name": "CO₂ de {zone}",
+        "state_attributes": {
+          "last_updated_at": {
+            "name": "Dernière actualisation de l’échantillon"
+          },
+          "measured_at": {
+            "name": "Date de la mesure"
+          },
+          "settling": {
+            "name": "Stabilisation du capteur"
+          }
+        }
+      },
+      "pm25": {
+        "name": "PM2,5 de {zone}",
+        "state_attributes": {
+          "last_updated_at": {
+            "name": "Dernière actualisation de l’échantillon"
+          },
+          "measured_at": {
+            "name": "Date de la mesure"
+          },
+          "settling": {
+            "name": "Stabilisation du capteur"
+          }
+        }
+      },
+      "tvoc": {
+        "name": "COV totaux de {zone}",
+        "state_attributes": {
+          "last_updated_at": {
+            "name": "Dernière actualisation de l’échantillon"
+          },
+          "measured_at": {
+            "name": "Date de la mesure"
+          },
+          "settling": {
+            "name": "Stabilisation du capteur"
+          }
+        }
+      },
+      "telemetry_status": {
+        "name": "État de la télémétrie de {zone}"
+      },
+      "observed_at": {
+        "name": "Dernière mesure de l’équipement de {zone}"
+      },
+      "main_power": {
+        "name": "Puissance principale",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Actualisation de la source"
+          }
+        }
+      },
+      "main_energy_today": {
+        "name": "Énergie principale aujourd’hui",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Actualisation de la source"
+          },
+          "source_timezone": {
+            "name": "Fuseau horaire de la source"
+          },
+          "period_date": {
+            "name": "Date de la période"
+          }
+        }
+      },
+      "load_power": {
+        "name": "Puissance de la charge {load}",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Actualisation de la source"
+          }
+        }
+      },
+      "load_energy_today": {
+        "name": "Énergie de la charge {load} aujourd’hui",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Actualisation de la source"
+          },
+          "source_timezone": {
+            "name": "Fuseau horaire de la source"
+          },
+          "period_date": {
+            "name": "Date de la période"
+          }
+        }
+      },
+      "heat_strips_power": {
+        "name": "Puissance des résistances électriques de {load}",
+        "state_attributes": {
+          "source_updated_at": {
+            "name": "Actualisation de la source"
+          }
+        }
+      },
+      "operation_mode": {
+        "name": "Mode de l’unité {equipment}"
+      },
+      "operation_status": {
+        "name": "Activité de l’unité {equipment}"
+      },
+      "operation_fanspeedstatus": {
+        "name": "Vitesse actuelle du ventilateur de {equipment}",
+        "state": {
+          "0": "Arrêt",
+          "1": "Basse",
+          "2": "Moyenne",
+          "3": "Élevée"
+        },
+        "state_attributes": {
+          "raw_value": {
+            "name": "Valeur brute signalée"
+          }
+        }
+      },
+      "operation_fanspeedsetpoint": {
+        "name": "Consigne de vitesse du ventilateur de {equipment}",
+        "state": {
+          "1": "Basse",
+          "2": "Moyenne",
+          "3": "Élevée"
+        },
+        "state_attributes": {
+          "raw_value": {
+            "name": "Valeur brute signalée"
+          }
+        }
+      },
+      "operation_fanlevelstatus": {
+        "name": "Niveau du ventilateur de {equipment}"
+      },
+      "operation_fanlevelsetting": {
+        "name": "Consigne du niveau du ventilateur de {equipment}"
+      },
+      "operation_fanoperatingmode": {
+        "name": "Mode de fonctionnement du ventilateur de {equipment}"
+      }
+    },
+    "binary_sensor": {
+      "zone_connection": {
+        "name": "Connexion de la zone {zone}",
+        "state_attributes": {
+          "issues": {
+            "name": "Problèmes de connexion"
+          },
+          "issue_count": {
+            "name": "Nombre de problèmes"
+          }
+        }
+      },
+      "equipment_connection": {
+        "name": "Connexion de {equipment}"
+      }
+    },
+    "climate": {
+      "thermostat": {
+        "name": "{zone}",
+        "state_attributes": {
+          "fan_mode": {
+            "name": "Mode du ventilateur",
+            "state": {
+              "auto": "Automatique",
+              "1": "Basse",
+              "2": "Moyenne",
+              "3": "Élevée"
+            }
+          },
+          "jetson_mode": {
+            "name": "Mode signalé par Jetson"
+          },
+          "jetson_status": {
+            "name": "Activité signalée par Jetson"
+          },
+          "heat_target_celsius": {
+            "name": "Consigne de chauffage (°C)"
+          },
+          "cool_target_celsius": {
+            "name": "Consigne de climatisation (°C)"
+          }
+        }
+      }
+    },
+    "humidifier": {
+      "humidifier": {
+        "name": "Humidificateur de {zone}"
+      }
+    }
+  },
+  "exceptions": {
+    "unsupported_hvac_mode": {
+      "message": "Mode de climatisation Jetson non pris en charge."
+    },
+    "unsupported_split_targets": {
+      "message": "Cette intégration ne prend pas en charge des consignes distinctes de chauffage et de climatisation."
+    },
+    "temperature_out_of_range": {
+      "message": "La température est hors de la plage prise en charge par la zone."
+    },
+    "rounded_temperature_out_of_range": {
+      "message": "La température arrondie est hors de la plage prise en charge."
+    },
+    "unsupported_fan_speed": {
+      "message": "Vitesse du ventilateur non prise en charge pour cette zone."
+    },
+    "unsupported_humidifier": {
+      "message": "Cette zone n’indique pas de commande d’humidificateur."
+    },
+    "humidity_out_of_range": {
+      "message": "L’humidité est hors de la plage prise en charge par la zone."
+    },
+    "rounded_humidity_out_of_range": {
+      "message": "L’humidité arrondie est hors de la plage prise en charge."
+    },
+    "zone_unavailable": {
+      "message": "La zone Jetson n’est pas disponible."
+    },
+    "reauth_required": {
+      "message": "Reconnectez-vous à Jetson Home."
+    },
+    "command_failed": {
+      "message": "Jetson n’a pas pu exécuter la commande : {error}"
+    }
+  }
+}
