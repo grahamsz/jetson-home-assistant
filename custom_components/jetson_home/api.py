@@ -11,7 +11,16 @@ from urllib.parse import parse_qs, quote, urlsplit
 import aiohttp
 
 from .const import API_URL
-from .models import Snapshot, System, Zone, equipment_for_zone, mapping, number
+from .models import (
+    Snapshot,
+    System,
+    Zone,
+    equipment_for_zone,
+    equipment_identifier,
+    heatpumps_for_system,
+    mapping,
+    number,
+)
 
 
 class JetsonError(Exception):
@@ -253,7 +262,7 @@ class JetsonClient:
             return cache.get(system_id, []), str(err)
 
     async def get_snapshot(self) -> Snapshot:
-        """Fetch topology and confirmed zone features without guessing energy routes."""
+        """Fetch configuration and confirmed zone/energy readings."""
         systems = self._items(await self.request("GET", "/v1/systems"), "systems")
         snapshot = Snapshot()
         for item in systems:
@@ -268,6 +277,8 @@ class JetsonClient:
             snapshot.systems[system_id] = system
         snapshot.zones = await self.get_zones(systems)
         await self._update_air_quality(snapshot)
+        await self._update_energy(snapshot)
+        await self._update_heatpumps(snapshot)
         return snapshot
 
     async def get_updates(
@@ -285,7 +296,66 @@ class JetsonClient:
             zone.status = status
             zone.air_quality = None
         await self._update_air_quality(snapshot)
+        await self._update_energy(snapshot)
+        await self._update_heatpumps(snapshot)
         return snapshot
+
+    async def _update_heatpumps(self, snapshot: Snapshot) -> None:
+        snapshot.heatpump_errors.clear()
+        for system in snapshot.systems.values():
+            system.heatpump_status.clear()
+            for item in heatpumps_for_system(system):
+                try:
+                    data = await self.request(
+                        "GET", f"/v1/equipment/{quote(item['id'], safe='')}/heatpump/status"
+                    )
+                    if not isinstance(data.get("health"), dict) or (
+                        "operation" in data and not isinstance(data["operation"], dict)
+                    ):
+                        raise JetsonError("Jetson returned an invalid heat-pump status response")
+                    system.heatpump_status[item["id"]] = data
+                except (JetsonAuthError, JetsonRateLimitError):
+                    raise
+                except JetsonError as err:
+                    snapshot.heatpump_errors[equipment_identifier(system.system_id, item["id"])] = (
+                        str(err)
+                    )
+
+    async def _update_energy(self, snapshot: Snapshot) -> None:
+        snapshot.energy_errors.clear()
+        for system in snapshot.systems.values():
+            system.energy = None
+            if not any(item.get("type") == "EnergyMonitor" for item in system.equipment):
+                continue
+            try:
+                data = await self.request(
+                    "GET", f"/v1/systems/{quote(system.system_id, safe='')}/energy/current"
+                )
+                live, today, loads = data.get("live"), data.get("today"), data.get("loads")
+                if (
+                    not isinstance(live, dict)
+                    or not isinstance(today, dict)
+                    or not isinstance(loads, list)
+                    or not isinstance(live.get("loads"), dict)
+                    or not isinstance(today.get("loads"), dict)
+                ):
+                    raise JetsonError("Jetson returned an invalid energy response")
+                keys = []
+                for item in loads:
+                    if (
+                        not isinstance(item, dict)
+                        or not isinstance(item.get("key"), str)
+                        or not item["key"]
+                    ):
+                        raise JetsonError("Jetson returned an invalid energy load identifier")
+                    keys.append(item["key"])
+                if len(set(keys)) != len(keys):
+                    raise JetsonError("Jetson returned duplicate energy load identifiers")
+                system.energy = data
+            except (JetsonAuthError, JetsonRateLimitError):
+                raise
+            except JetsonError as err:
+                snapshot.energy_errors[system.system_id] = str(err)
 
     async def _update_connectivity(self, snapshot: Snapshot) -> None:
         """Read liveness for configured objects, retaining their identity/metadata."""

@@ -1,0 +1,493 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Jetson Home live API observations",
+    "version": "2026-11-04",
+    "description": "Four live-observed operations supplement the 43 app-callsite operations in openapi.json. Energy/current and generic equipment status are additional routes; zone status and heat-pump status extend already documented responses. Nullable energy readings are also informed by the bundled energy types. Observations do not establish all valid fields, values, entitlements, freshness policies, or error responses."
+  },
+  "servers": [
+    {
+      "url": "https://autopilot-api.jetsonhome.com"
+    }
+  ],
+  "paths": {
+    "/v1/systems/{systemId}/energy/current": {
+      "get": {
+        "summary": "Current whole-home and per-load power and calendar-day energy",
+        "description": "HTTP 200 and this response structure were observed in authorized account reads on November 3\u20134, 2026 (America/Denver). This is a sample-derived description, not a complete vendor contract.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "systemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Observed successful JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservedEnergyCurrent"
+                }
+              }
+            }
+          }
+        },
+        "x-evidence": {
+          "source": "authorized-live-observation",
+          "date": "2026-11-04",
+          "account-data-omitted": true
+        }
+      }
+    },
+    "/v1/equipment/{equipmentId}/status": {
+      "get": {
+        "summary": "Generic status, observed on TEMCO supply and return sensors",
+        "description": "HTTP 200 and this response structure were observed in authorized account reads on November 3\u20134, 2026 (America/Denver). This is a sample-derived description, not a complete vendor contract.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "equipmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Observed successful JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservedSensorStatus"
+                }
+              }
+            }
+          }
+        },
+        "x-evidence": {
+          "source": "authorized-live-observation",
+          "date": "2026-11-04",
+          "account-data-omitted": true
+        }
+      }
+    },
+    "/v1/equipment/{equipmentId}/heatpump/status": {
+      "get": {
+        "summary": "Heat-pump health and optional operation fields",
+        "description": "HTTP 200 and this response structure were observed in authorized account reads on November 3\u20134, 2026 (America/Denver). This is a sample-derived description, not a complete vendor contract.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "equipmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Observed successful JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservedHeatPumpStatus"
+                }
+              }
+            }
+          }
+        },
+        "x-evidence": {
+          "source": "authorized-live-observation",
+          "date": "2026-11-04",
+          "account-data-omitted": true
+        }
+      }
+    },
+    "/v1/zones/{zoneId}/status": {
+      "get": {
+        "summary": "Zone features plus connectivity and telemetry freshness",
+        "description": "HTTP 200 and this response structure were observed in authorized account reads on November 3\u20134, 2026 (America/Denver). This is a sample-derived description, not a complete vendor contract.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "zoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Observed successful JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservedZoneStatus"
+                }
+              }
+            }
+          }
+        },
+        "x-evidence": {
+          "source": "authorized-live-observation",
+          "date": "2026-11-04",
+          "account-data-omitted": true
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "ObservedEnergyLoad": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "equipmentId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "key",
+          "kind",
+          "equipmentId",
+          "type",
+          "name"
+        ]
+      },
+      "ObservedEnergyLiveLoad": {
+        "type": "object",
+        "properties": {
+          "powerW": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "heatStripsPowerW": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "powerW"
+        ]
+      },
+      "ObservedEnergyDailyLoad": {
+        "type": "object",
+        "properties": {
+          "energyKwh": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "energyKwh"
+        ]
+      },
+      "ObservedEnergyCurrent": {
+        "type": "object",
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "description": "IANA timezone used for the calendar day."
+          },
+          "loads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ObservedEnergyLoad"
+            }
+          },
+          "live": {
+            "type": "object",
+            "properties": {
+              "asOf": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "totalMainPowerW": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "loads": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ObservedEnergyLiveLoad"
+                }
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "asOf",
+              "totalMainPowerW",
+              "loads"
+            ]
+          },
+          "today": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "asOf": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "totalMainEnergyKwh": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "loads": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ObservedEnergyDailyLoad"
+                }
+              },
+              "residualEnergyKwh": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "date",
+              "asOf",
+              "totalMainEnergyKwh",
+              "loads",
+              "residualEnergyKwh"
+            ]
+          },
+          "comparisons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "totalMainEnergyKwh": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "loads": {
+                  "type": "object",
+                  "description": "Only empty maps were observed here; entry shape is not established.",
+                  "additionalProperties": true
+                },
+                "residualEnergyKwh": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": true,
+              "required": [
+                "key",
+                "date",
+                "totalMainEnergyKwh",
+                "loads",
+                "residualEnergyKwh"
+              ]
+            }
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "timezone",
+          "loads",
+          "live",
+          "today",
+          "comparisons"
+        ]
+      },
+      "ObservedHeatPumpStatus": {
+        "type": "object",
+        "properties": {
+          "health": {
+            "type": "object",
+            "properties": {
+              "connectionStatus": {
+                "type": "string"
+              },
+              "operationalStatus": {
+                "type": "string"
+              },
+              "faults": {
+                "type": "array",
+                "items": {}
+              }
+            },
+            "additionalProperties": true
+          },
+          "operation": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "fanOperatingMode": {
+                "type": "string"
+              },
+              "fanSpeedStatus": {
+                "type": "number"
+              },
+              "fanSpeedSetpoint": {
+                "type": "number"
+              },
+              "fanLevelStatus": {
+                "type": "number"
+              },
+              "fanLevelSetting": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": true,
+            "description": "Optional, absent in the offline outdoor-unit response. Numeric units and complete string enums are unestablished."
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "health"
+        ]
+      },
+      "ObservedSensorStatus": {
+        "type": "object",
+        "properties": {
+          "health": {
+            "type": "object",
+            "properties": {
+              "faults": {
+                "type": "array",
+                "items": {},
+                "description": "Only an empty array observed for these sensors."
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "faults"
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "health"
+        ]
+      },
+      "ObservedZoneStatus": {
+        "type": "object",
+        "properties": {
+          "features": {
+            "type": "object",
+            "description": "Feature structure is described in the recovered app schemas; newer fields may be present.",
+            "additionalProperties": true
+          },
+          "connectivity": {
+            "type": "object",
+            "properties": {
+              "connectionStatus": {
+                "type": "string"
+              },
+              "issues": {
+                "type": "array",
+                "items": {},
+                "description": "Only an empty array was observed; nonempty item structure remains unknown."
+              }
+            },
+            "additionalProperties": true
+          },
+          "health": {
+            "type": "object",
+            "properties": {
+              "telemetryStatus": {
+                "type": "string"
+              },
+              "observedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "features"
+        ]
+      }
+    }
+  }
+}

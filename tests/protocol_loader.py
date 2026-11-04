@@ -3,6 +3,7 @@
 import importlib
 import sys
 import types
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,6 +13,8 @@ sys.modules.setdefault("jetson_protocol", package)
 api = importlib.import_module("jetson_protocol.api")
 models = importlib.import_module("jetson_protocol.models")
 polling = importlib.import_module("jetson_protocol.polling")
+energy = importlib.import_module("jetson_protocol.energy")
+telemetry = importlib.import_module("jetson_protocol.telemetry")
 
 
 def sample_status():
@@ -97,4 +100,49 @@ def sample_air_quality():
             "tvoc": {"value": 250, "level": "good"},
         },
         "history": [],
+    }
+
+
+def sample_energy():
+    """Invented values in the live-observed keyed-load response shape."""
+    now = datetime.now(UTC)
+    return {
+        "timezone": "UTC",
+        "loads": [
+            {
+                "key": "hp1",
+                "kind": "equipment",
+                "equipmentId": "hp1",
+                "type": "HeatPump",
+                "name": "Heat pump",
+            }
+        ],
+        "live": {
+            "asOf": now.isoformat(),
+            "totalMainPowerW": 1000,
+            "loads": {"hp1": {"powerW": 125.5, "heatStripsPowerW": 5}},
+        },
+        "today": {
+            "date": now.date().isoformat(),
+            "asOf": now.isoformat(),
+            "totalMainEnergyKwh": 3.5,
+            "loads": {"hp1": {"energyKwh": 2.5}},
+            "residualEnergyKwh": 1,
+        },
+        "comparisons": [],
+    }
+
+
+def sample_heatpump_status():
+    return {
+        "health": {"connectionStatus": "Connected", "operationalStatus": "Active", "faults": []},
+        "operation": {
+            "mode": "Off",
+            "status": "Off",
+            "fanSpeedStatus": 0,
+            "fanSpeedSetpoint": 1,
+            "fanLevelStatus": 0,
+            "fanLevelSetting": 1,
+            "fanOperatingMode": "constantAirflow",
+        },
     }

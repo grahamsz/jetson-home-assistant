@@ -77,7 +77,28 @@ class Zone:
     @property
     def online(self) -> bool:
         # Missing health is allowed by SystemOverview. Unknown health is not online.
-        return self.connection_status in (None, "Connected")
+        return self.effective_connection_status in (None, "Connected")
+
+    @property
+    def effective_connection_status(self) -> str | None:
+        connectivity = mapping(self.status.get("connectivity"))
+        if "connectionStatus" in connectivity:
+            current = connectivity["connectionStatus"]
+            return current if current in ("Connected", "Disconnected", "Unknown") else "Unknown"
+        return self.connection_status
+
+    @property
+    def connectivity_issues(self) -> list | None:
+        value = mapping(self.status.get("connectivity")).get("issues")
+        return value if isinstance(value, list) else None
+
+    @property
+    def telemetry_status(self) -> str | None:
+        return optional_text(mapping(self.status.get("health")).get("telemetryStatus"))
+
+    @property
+    def observed_at(self) -> str | None:
+        return optional_text(mapping(self.status.get("health")).get("observedAt"))
 
     @property
     def mode(self) -> str | None:
@@ -232,6 +253,8 @@ class System:
     equipment: list[dict[str, Any]] = field(default_factory=list)
     equipment_error: str | None = None
     boards_error: str | None = None
+    energy: dict[str, Any] | None = None
+    heatpump_status: dict[str, dict] = field(default_factory=dict)
 
 
 @dataclass
@@ -242,6 +265,8 @@ class Snapshot:
     zones: dict[str, Zone] = field(default_factory=dict)
     air_quality_errors: dict[str, str] = field(default_factory=dict)
     system_health_error: str | None = None
+    energy_errors: dict[str, str] = field(default_factory=dict)
+    heatpump_errors: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -259,6 +284,14 @@ class Device:
 
 def system_identifier(system_id: str) -> str:
     return f"system:{system_id}"
+
+
+def heatpumps_for_system(system: System) -> list[dict]:
+    """Prefer component units over a legacy aggregate referring to the same pump."""
+    units = [
+        item for item in system.equipment if item.get("type") in ("HeatPumpIdu", "HeatPumpOdu")
+    ]
+    return units or [item for item in system.equipment if item.get("type") == "HeatPump"]
 
 
 def board_identifier(system_id: str, board_id: str) -> str:

@@ -11,6 +11,8 @@ flowchart TD
     S --> H[Main HVAC mode / fan mode / activity history]
     S --> Q[Main air quality / permitted pollutant readings]
     S --> D[Named heat-pump / monitor / thermostat connection diagnostics]
+    S --> E[Whole-home and named-load power / daily energy]
+    S --> T[Zone freshness / reported unit-operation diagnostics]
 ```
 
 The system device uses identifier `system:{systemId}` in domain `jetson_home`, the reported system name, and model Jetson Home. It is an aggregate service device; the integration does not assign one piece of equipment's serial number to the whole installation. Hubs, equipment IDs, gateway links, models, and zone membership remain in the discovered API configuration. Equipment model/type/role/connectivity summaries are included in redacted diagnostics, while serial numbers, account identifiers, equipment names, and addresses are omitted from that export.
@@ -44,6 +46,11 @@ The system device ID is retained when its prior record exists. Migration is idem
 | PM2.5 | Zone-named sensor | PM2.5 / measurement / μg/m³ |
 | TVOC | Zone-named sensor | VOC parts / measurement / ppb |
 | Equipment connection | Equipment-named diagnostic | Connectivity binary sensor |
+| Zone connection / issues | Zone-named diagnostic; issues and issue count are attributes | Connectivity binary sensor |
+| Telemetry status / Last device reading | Zone-named diagnostics | Plain text / timestamp |
+| Heat-pump operation fields | Equipment-named diagnostics; only reported fields appear | Text or dimensionless number; no invented RPM/% units |
+| Whole-home / per-load power | System or reported load name | Power / measurement / W |
+| Whole-home / per-load energy today | System or reported load name | Energy / total with explicit local-midnight reset / kWh |
 
 The air-quality endpoint is `GET /v1/zones/{zoneId}/airQuality`. It has no physical source-equipment ID. Consolidating the UI does not change that scope: each zone aggregate is exposed once, rather than being attributed to a particular return-air monitor or copied to every installed monitor. The poller associates reported Sensor/TEMCO-AQM equipment using explicit zone/equipment membership or a parent's zone membership when the peripheral has none. An explicit assignment to a different zone is not overridden.
 
@@ -53,7 +60,7 @@ The app's schemas establish ppm for CO₂, μg/m³ for PM2.5, and ppb for TVOC. 
 
 The server response controls available entities:
 
-- `access: full`: overall quality plus CO₂/PM2.5/TVOC sensors, with null measurements left unknown.
+- `access: full`: overall quality plus CO₂/PM2.5/TVOC sensors; missing/settling pollutant values are unavailable.
 - `access: limited`: overall quality only; the recovered schema identifies missing entitlement `jetson_care`.
 - Failed/unexpected response: affected AQ readings unavailable; climate polling can continue.
 
@@ -63,15 +70,15 @@ If access changes from limited to full, pollutant entities can appear automatica
 
 ## Connectivity and configuration updates
 
-Connected maps to on, Disconnected to off, and Unknown to an unknown diagnostic state. Connectivity is the backend's liveness assessment, not a direct local ping. The backend describes a five-minute staleness window. Connection checks run on the next poll after five minutes and update only known objects' status. Configuration changes are applied at startup/reload or through Refresh configuration. See [polling](POLLING.md).
+Connected maps to on, Disconnected to off, and Unknown to an unknown diagnostic state. Connectivity is the backend's liveness assessment, not a direct local ping. The newer zone-status connection field takes priority over cached system health and is read each measurement cycle. Zone connection diagnostics also expose reported issues. Telemetry status and Last device reading distinguish a successful API request from a recent device sample. Inventory connection checks run on the next poll after five minutes and update only known objects' status; the backend also describes a five-minute equipment staleness window. Configuration changes are applied at startup/reload or through Refresh configuration. See [polling](POLLING.md).
 
 Inventory errors retain last-good optional data and make affected connectivity readings unavailable. Equipment omitted from a successful health read becomes unknown until explicit discovery. Removing equipment from the active configuration makes its existing entities unavailable; the initial consolidation cleanup is distinct from deleting historical entity records.
 
-## Energy remains incomplete
+## Power and daily energy
 
-Reported EnergyMonitor equipment, including EM-001 and EMPORIA-VUE-3, can supply a named connection diagnostic and anonymized model metadata under the system device. **Power/kWh sensors and Energy-dashboard support are not implemented.** The bundle defines live total watts, per-load watts with equipment IDs, and today's kWh, but no verified read route was found.
+Version 0.5.0 reads `GET /v1/systems/{systemId}/energy/current` once per system with a discovered EnergyMonitor. The confirmed response supplies whole-home power and daily energy, plus named load values keyed by reported load identifiers. All sensors share the system device. Null/missing values remain unknown; optional request failures and stale timestamps make the readings unavailable.
 
-Future measurements should expose the whole-home aggregate once and identify per-load sensors by their reported equipment ID, all within the system device. Counter resets, corrections, timezone, and freshness must be validated before choosing energy statistics semantics. No zero values or guessed read routes are created.
+Daily energy uses HA's `total` state class with an explicit reset derived from the API's date and IANA timezone. This accommodates within-day corrections; a calendar-day reset was observed live across local midnight. Per-load identities use reported keys rather than guessing from names. The whole-home total is exposed once; load totals, residuals, and unverified heat-strip components are not added to it. Whole-home and per-load energy can serve different Energy-dashboard roles, so avoid configuring overlapping readings as independent home consumption sources. Recorder/Energy behavior still needs validation in HA. See [energy details](ENERGY.md).
 
 The AWS IoT MQTT provisioning schema is specifically for EM-001. It does not establish a readable Emporia Vue 3 stream or subscription. The explicit OCPP WebSocket field belongs to the EV charger; see [transport findings](API.md#realtime-updates-websocket-sse-and-mqtt).
 
@@ -81,4 +88,4 @@ Protocol/polling tests use a local mock server. Consolidation tests use in-memor
 
 ## Air-quality freshness
 
-Air-quality entities become unavailable when `current.lastUpdatedAt` is more than one hour old, matching the Android app threshold (`isReadingStale`, recovered bundle lines 1015152�1015235). A recent reading remains available when the fan stops; availability returns on a fresh sample. Missing, invalid, timezone-less, or future timestamps are treated as unavailable. Individual pollutants are also unavailable while settling or when their value is missing. Climate and room temperature/humidity remain independent. This is evaluated at each normal polling update.
+Air-quality entities become unavailable when `current.lastUpdatedAt` is more than one hour old, matching the Android app threshold (`isReadingStale`, recovered bundle lines 1015152–1015235). A recent reading remains available when the fan stops; availability returns on a fresh sample. Missing, invalid, timezone-less, or future timestamps are treated as unavailable. Individual pollutants are also unavailable while settling or when their value is missing. Climate and room temperature/humidity remain independent. This is evaluated at each normal polling update.

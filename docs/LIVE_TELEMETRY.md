@@ -1,0 +1,48 @@
+# Newer status fields and supply/return findings
+
+Authorized reads on November 3–4, 2026 returned fields absent from the recovered app schemas. The [live OpenAPI supplement](live-openapi.json) records these observations separately; it is not a complete vendor specification.
+
+## Zone status additions
+
+`GET /v1/zones/{zoneId}/status` returned:
+
+| Field | HA representation in 0.5.0 |
+| --- | --- |
+| `connectivity.connectionStatus` | Zone connection diagnostic binary sensor; fresh value takes priority over cached system health |
+| `connectivity.issues` | issues and issue_count attributes on that connection entity; nonempty item structure remains unknown |
+| `health.telemetryStatus` | Telemetry status diagnostic sensor, preserving the reported string |
+| `health.observedAt` | Last device reading timestamp sensor |
+
+These use the already-polled zone response and add no requests. Connection and freshness diagnostics remain readable when a zone reports disconnected; ordinary controls/readings still respect connectivity. Current was observed for telemetryStatus, but the full enum is not established. An API response timestamp and a real device observation are different facts; the timestamp entity reports observedAt, not the time HA fetched it.
+
+## Heat-pump operation additions
+
+`GET /v1/equipment/{equipmentId}/heatpump/status` returned an operation object for the indoor unit. It was absent for the offline outdoor unit. Reported fields become named diagnostics on the system device:
+
+| Field | Entity suffix | Type |
+| --- | --- | --- |
+| `mode` | Unit mode | Reported string |
+| `status` | Unit activity | Reported string |
+| `fanSpeedStatus` | Fan speed status | Number, units unestablished |
+| `fanSpeedSetpoint` | Fan speed setpoint | Number, units unestablished |
+| `fanLevelStatus` | Fan level | Number, scale unestablished |
+| `fanLevelSetting` | Fan level setting | Number, scale unestablished |
+| `fanOperatingMode` | Fan operating mode | Reported string; constantAirflow observed |
+
+The indoor unit reported mode/status Off while the zone remained configured for Heat, which is why controller operation and selected thermostat mode are separate entities. Numeric fan values are not labeled as RPM, percentages, airflow, or pressure without evidence. No unit-level controls are added. Missing operation fields do not become zeros or off states.
+
+Known HeatPumpIdu/HeatPumpOdu equipment is polled at the normal reading interval. A legacy HeatPump aggregate is used only when component types are absent, avoiding duplicate operation sensors for the same system. Each failure is isolated from climate/energy; absent/offline fields make the affected operation entities unavailable.
+
+## TEMCO supply and return sensors
+
+Inventory identified a ReturnAir TEMCO-AQM and a SupplyAir TEMCO-TH, both connected at the observation. Their generic `GET /v1/equipment/{equipmentId}/status` responses contained only health.faults as an empty array. This confirms a status route, not pressure/temperature/humidity telemetry from each physical sensor.
+
+The tested per-sensor suffixes sensor/status, sensor/current, sensor/readings, readings, telemetry/current, measurements, plus return airQuality and supply temperatureHumidity returned 404. System sensors and telemetry/current also returned 404. These bounded guesses do not prove that no other read interface exists.
+
+No pressure readings were obtained. Heat-pump telemetry/metrics/pressure guesses returned HTTP 405, but an intentionally nonexistent sibling path also returned 405 with Allow: POST. This is a generic routing pattern, not proof of those endpoints. No guessed POST or equipment configuration write was attempted. The app's surfacePressure signal is weather-related and must not be relabeled as duct or refrigerant pressure.
+
+## Air-quality access and stale samples
+
+The zone air-quality endpoint returned access full with CO₂, PM2.5, and TVOC values, despite the earlier subscription hypothesis. This establishes access for those reads, not a permanent entitlement policy. Zone readings are not separate supply/return measurements.
+
+Those AQ samples were older than the thermostat/power data. The user's freshness fix is included: samples older than one hour, missing/invalid/naive/future timestamps, settling pollutants, and missing numeric values become unavailable. A stopped fan does not by itself invalidate a recent sample. The source last_updated_at, per-pollutant measured_at/settling, access, and missing entitlement attributes help distinguish these conditions.

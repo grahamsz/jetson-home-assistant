@@ -9,7 +9,9 @@ from protocol_loader import models, sample_air_quality
 class AirQualityAvailabilityTests(unittest.TestCase):
     def setUp(self):
         self.now = datetime(2026, 11, 4, 7, tzinfo=UTC)
-        self.zone = models.Zone(system_id="s", system_name="Home", zone_id="z", name="Test", status={})
+        self.zone = models.Zone(
+            system_id="s", system_name="Home", zone_id="z", name="Test", status={}
+        )
         self.zone.air_quality = sample_air_quality()
         self.current = self.zone.air_quality["current"]
         self.current["lastUpdatedAt"] = self.now.isoformat()

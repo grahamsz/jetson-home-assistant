@@ -13,7 +13,9 @@ from protocol_loader import (
     models,
     polling,
     sample_air_quality,
+    sample_energy,
     sample_equipment,
+    sample_heatpump_status,
     sample_status,
 )
 
@@ -27,6 +29,8 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.boards = [{"id": "b1", "type": "Arctic", "serialNumber": "invented-hub-serial"}]
         self.equipment = sample_equipment()
         self.air_quality = sample_air_quality()
+        self.energy = sample_energy()
+        self.heatpump_status = sample_heatpump_status()
         application = web.Application()
         application.router.add_route("*", "/{tail:.*}", self.handle)
         self.runner = web.AppRunner(application)
@@ -88,6 +92,10 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
             return web.json_response({"equipment": self.equipment})
         if path == "/v1/zones/z1/airQuality":
             return web.json_response(self.air_quality)
+        if path == "/v1/systems/s1/energy/current":
+            return web.json_response(self.energy)
+        if path == "/v1/equipment/hp1/heatpump/status":
+            return web.json_response(self.heatpump_status)
         if path.endswith("/humidity/settings"):
             return web.json_response(
                 {"mode": body.get("mode", "Off"), "setpoint": body.get("setpoint", {"value": 40})}
@@ -300,16 +308,20 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
             ),
             ("good", 650, 4.5, 250),
         )
-        self.assertEqual(len(self.calls), 6)
+        self.assertEqual(len(self.calls), 8)
         self.assertEqual(sum(call[1] == "/v1/systems" for call in self.calls), 1)
 
-    async def test_energy_hardware_does_not_invent_energy_telemetry(self):
+    async def test_energy_hardware_reads_only_the_live_verified_energy_route(self):
         snapshot = await self.client.get_snapshot()
         devices = models.build_devices(snapshot)
         self.assertEqual(set(devices), {"system:s1"})
         self.assertEqual(models.device_aliases(snapshot)["equipment:s1:em1"], "system:s1")
         self.assertEqual(snapshot.systems["s1"].equipment[2]["model"], "EM-001")
-        self.assertTrue(all("/energy" not in call[1] for call in self.calls))
+        self.assertEqual(
+            [call[1] for call in self.calls if "/energy" in call[1]],
+            ["/v1/systems/s1/energy/current"],
+        )
+        self.assertEqual(snapshot.systems["s1"].energy["live"]["totalMainPowerW"], 1000)
 
     async def test_no_air_monitor_means_no_air_quality_request(self):
         self.equipment = [item for item in self.equipment if item["type"] != "Sensor"]
@@ -410,19 +422,32 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.air_quality["current"]["co2"]["value"] = 700
         current = await self.client.get_updates(previous)
         self.assertEqual(
-            [call[1] for call in self.calls], ["/v1/zones/z1/status", "/v1/zones/z1/airQuality"]
+            [call[1] for call in self.calls],
+            [
+                "/v1/zones/z1/status",
+                "/v1/zones/z1/airQuality",
+                "/v1/systems/s1/energy/current",
+                "/v1/equipment/hp1/heatpump/status",
+            ],
         )
         self.assertEqual(current.zones["s1:z1"].current_temperature, 23)
         self.assertEqual(current.zones["s1:z1"].pollutant("co2"), 700)
         self.assertEqual(previous.zones["s1:z1"].current_temperature, 21.25)
         self.assertEqual(previous.zones["s1:z1"].pollutant("co2"), 650)
 
-    async def test_regular_updates_without_air_monitor_read_only_status(self):
+    async def test_regular_updates_without_air_monitor_skip_only_air_quality(self):
         self.equipment = [item for item in self.equipment if item["type"] != "Sensor"]
         previous = await self.client.get_snapshot()
         self.calls.clear()
         await self.client.get_updates(previous)
-        self.assertEqual([call[1] for call in self.calls], ["/v1/zones/z1/status"])
+        self.assertEqual(
+            [call[1] for call in self.calls],
+            [
+                "/v1/zones/z1/status",
+                "/v1/systems/s1/energy/current",
+                "/v1/equipment/hp1/heatpump/status",
+            ],
+        )
 
     async def test_air_quality_failure_does_not_reuse_previous_reading(self):
         previous = await self.client.get_snapshot()
@@ -490,6 +515,8 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
                 "/v1/systems/s1/equipment",
                 "/v1/zones/z1/status",
                 "/v1/zones/z1/airQuality",
+                "/v1/systems/s1/energy/current",
+                "/v1/equipment/hp1/heatpump/status",
             ],
         )
 
@@ -532,8 +559,8 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         now = [0.0]
         poller = polling.JetsonPoller(self.client, clock=lambda: now[0])
         await poller.refresh()
-        self.assertEqual(len(self.calls), 6)
-        for moment, expected in ((30, 2), (299, 2), (300, 4), (330, 2), (600, 4)):
+        self.assertEqual(len(self.calls), 8)
+        for moment, expected in ((30, 4), (299, 4), (300, 6), (330, 4), (600, 6)):
             now[0] = moment
             self.calls.clear()
             await poller.refresh()
@@ -558,7 +585,14 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(poller.configuration_revision, 2)
         self.calls.clear()
         self.assertEqual(set((await poller.refresh()).zones), {"s1:z2"})
-        self.assertEqual([call[1] for call in self.calls], ["/v1/zones/z2/status"])
+        self.assertEqual(
+            [call[1] for call in self.calls],
+            [
+                "/v1/zones/z2/status",
+                "/v1/systems/s1/energy/current",
+                "/v1/equipment/hp1/heatpump/status",
+            ],
+        )
 
     async def test_failed_configuration_refresh_keeps_last_good_configuration(self):
         poller = polling.JetsonPoller(self.client)
@@ -576,7 +610,7 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.calls.clear()
         current = await poller.refresh()
         self.assertEqual(set(current.zones), {"s1:z1"})
-        self.assertEqual(len(self.calls), 2)
+        self.assertEqual(len(self.calls), 4)
 
     async def test_failed_measurement_refresh_does_not_mutate_last_good_state(self):
         poller = polling.JetsonPoller(self.client)
@@ -630,9 +664,112 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(poller.snapshot, latest)
         self.assertEqual(poller.configuration_revision, 2)
         self.assertEqual(
-            [call[1] for call in self.calls[:3]],
-            ["/v1/zones/z1/status", "/v1/zones/z1/airQuality", "/v1/systems"],
+            [call[1] for call in self.calls[:5]],
+            [
+                "/v1/zones/z1/status",
+                "/v1/zones/z1/airQuality",
+                "/v1/systems/s1/energy/current",
+                "/v1/equipment/hp1/heatpump/status",
+                "/v1/systems",
+            ],
         )
+
+    async def test_no_energy_monitor_means_no_energy_request(self):
+        self.equipment = [item for item in self.equipment if item["type"] != "EnergyMonitor"]
+        snapshot = await self.client.get_snapshot()
+        self.assertIsNone(snapshot.systems["s1"].energy)
+        self.assertFalse(any("/energy/" in call[1] for call in self.calls))
+
+    async def test_energy_failure_does_not_disable_climate_or_reuse_old_energy(self):
+        previous = await self.client.get_snapshot()
+
+        async def behavior(request, body):
+            if request.path.endswith("/energy/current"):
+                return web.json_response({}, status=503)
+
+        self.behavior = behavior
+        failed = await self.client.get_updates(previous)
+        self.assertEqual(failed.zones["s1:z1"].current_temperature, 21.25)
+        self.assertEqual(failed.zones["s1:z1"].pollutant("co2"), 650)
+        self.assertIsNone(failed.systems["s1"].energy)
+        self.assertIn("s1", failed.energy_errors)
+        self.assertIsNotNone(previous.systems["s1"].energy)
+        self.behavior = None
+        recovered = await self.client.get_updates(failed)
+        self.assertFalse(recovered.energy_errors)
+        self.assertIsNotNone(recovered.systems["s1"].energy)
+
+    async def test_malformed_energy_schema_is_isolated(self):
+        self.energy = {"live": {"loads": []}, "today": {}, "loads": []}
+        snapshot = await self.client.get_snapshot()
+        self.assertIsNone(snapshot.systems["s1"].energy)
+        self.assertIn("s1", snapshot.energy_errors)
+        self.assertEqual(snapshot.zones["s1:z1"].current_temperature, 21.25)
+
+    async def test_duplicate_energy_load_keys_are_rejected(self):
+        self.energy["loads"].append(dict(self.energy["loads"][0]))
+        snapshot = await self.client.get_snapshot()
+        self.assertIn("s1", snapshot.energy_errors)
+
+    async def test_invalid_energy_load_keys_are_rejected(self):
+        self.energy["loads"][0]["key"] = None
+        snapshot = await self.client.get_snapshot()
+        self.assertIn("s1", snapshot.energy_errors)
+
+    async def test_auth_failure_for_energy_requires_reauthentication(self):
+        async def behavior(request, body):
+            if request.path.endswith("/energy/current"):
+                return web.json_response({}, status=401)
+
+        self.behavior = behavior
+        with self.assertRaises(api.JetsonAuthError):
+            await self.client.get_snapshot()
+
+    async def test_energy_is_fetched_once_per_system_not_per_zone(self):
+        async def behavior(request, body):
+            if request.path == "/v1/systems/s1/zones":
+                return web.json_response({"zones": [{"id": "z1"}, {"id": "z2"}]})
+            if request.path == "/v1/zones/z2/status":
+                return web.json_response(self.status)
+
+        self.behavior = behavior
+        snapshot = await self.client.get_snapshot()
+        self.assertEqual(len(snapshot.zones), 2)
+        self.assertEqual(sum(call[1].endswith("/energy/current") for call in self.calls), 1)
+
+    async def test_heatpump_failure_clears_its_operation_but_keeps_other_readings(self):
+        previous = await self.client.get_snapshot()
+
+        async def behavior(request, body):
+            if request.path.endswith("/heatpump/status"):
+                return web.json_response({}, status=503)
+
+        self.behavior = behavior
+        current = await self.client.get_updates(previous)
+        self.assertFalse(current.systems["s1"].heatpump_status)
+        self.assertIn("equipment:s1:hp1", current.heatpump_errors)
+        self.assertIsNotNone(current.systems["s1"].energy)
+        self.assertEqual(current.zones["s1:z1"].current_temperature, 21.25)
+        self.assertIn("hp1", previous.systems["s1"].heatpump_status)
+
+    async def test_heatpump_health_only_response_is_accepted_without_fake_operation(self):
+        self.heatpump_status = {"health": {"connectionStatus": "Disconnected", "faults": []}}
+        snapshot = await self.client.get_snapshot()
+        self.assertEqual(snapshot.systems["s1"].heatpump_status["hp1"], self.heatpump_status)
+        self.assertNotIn("operation", snapshot.systems["s1"].heatpump_status["hp1"])
+
+    async def test_zone_extra_fields_survive_normal_polls(self):
+        previous = await self.client.get_snapshot()
+        self.status["connectivity"] = {
+            "connectionStatus": "Connected",
+            "issues": [{"code": "test"}],
+        }
+        self.status["health"] = {"telemetryStatus": "Current", "observedAt": "2026-11-04T07:00:00Z"}
+        current = await self.client.get_updates(previous)
+        zone = current.zones["s1:z1"]
+        self.assertEqual(zone.telemetry_status, "Current")
+        self.assertEqual(zone.observed_at, "2026-11-04T07:00:00Z")
+        self.assertEqual(zone.connectivity_issues, [{"code": "test"}])
 
 
 class ModelTests(unittest.TestCase):

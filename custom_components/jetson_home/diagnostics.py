@@ -3,14 +3,14 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .models import optional_text
+from .models import mapping, optional_text
 from .polling import CONNECTIVITY_INTERVAL
 
 
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     coordinator = entry.runtime_data
     return {
-        "integration_version": "0.4.0",
+        "integration_version": "0.5.0",
         "device_grouping": "one_per_system",
         "last_update_success": coordinator.last_update_success,
         "scan_interval_seconds": coordinator.update_interval.total_seconds(),
@@ -20,7 +20,13 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
         "zones": [
             {
                 "online": zone.online,
-                "connection_status": zone.connection_status,
+                "connection_status": zone.effective_connection_status,
+                "system_connection_status": zone.connection_status,
+                "telemetry_status": zone.telemetry_status,
+                "telemetry_observed_at": zone.observed_at,
+                "connectivity_issue_count": len(zone.connectivity_issues)
+                if zone.connectivity_issues is not None
+                else None,
                 "feature_names": sorted(zone.features),
                 "mode": zone.mode,
                 "action": zone.action,
@@ -34,6 +40,10 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
                 "air_quality_access": zone.air_quality_access,
                 "air_quality_missing_entitlement": zone.air_quality_missing_entitlement,
                 "air_quality_request_failed": zone.key in coordinator.data.air_quality_errors,
+                "air_quality_fresh": zone.air_quality_available("overall"),
+                "air_quality_last_updated_at": mapping(
+                    mapping(zone.air_quality).get("current")
+                ).get("lastUpdatedAt"),
             }
             for zone in coordinator.data.zones.values()
         ],
@@ -58,9 +68,18 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
                     }
                     for item in system.equipment
                 ],
+                "energy_data_available": system.energy is not None,
+                "energy_request_failed": system.system_id in coordinator.data.energy_errors,
+                "heatpump_status_count": len(system.heatpump_status),
+                "heatpump_operation_count": sum(
+                    isinstance(item.get("operation"), dict)
+                    for item in system.heatpump_status.values()
+                ),
             }
             for system in coordinator.data.systems.values()
         ],
         "air_quality_error_count": len(coordinator.data.air_quality_errors),
-        "energy_telemetry_implemented": False,
+        "energy_telemetry_implemented": True,
+        "energy_error_count": len(coordinator.data.energy_errors),
+        "heatpump_error_count": len(coordinator.data.heatpump_errors),
     }

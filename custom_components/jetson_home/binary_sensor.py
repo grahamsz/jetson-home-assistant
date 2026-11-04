@@ -9,7 +9,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import JetsonCoordinator
-from .models import equipment_identifier, optional_text
+from .entity import JetsonEntity
+from .models import equipment_identifier, mapping, optional_text
 
 
 async def async_setup_entry(
@@ -20,6 +21,10 @@ async def async_setup_entry(
 
     def discover() -> None:
         entities = []
+        for key, zone in coordinator.data.zones.items():
+            if key not in known and "connectionStatus" in mapping(zone.status.get("connectivity")):
+                known.add(key)
+                entities.append(JetsonZoneConnectivity(coordinator, zone))
         for system in coordinator.data.systems.values():
             for item in system.equipment:
                 key = equipment_identifier(system.system_id, item["id"])
@@ -34,6 +39,30 @@ async def async_setup_entry(
 
     discover()
     entry.async_on_unload(coordinator.async_add_listener(discover))
+
+
+class JetsonZoneConnectivity(JetsonEntity, BinarySensorEntity):
+    _attr_name = "Zone connection"
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, zone) -> None:
+        super().__init__(coordinator, zone)
+        self._attr_unique_id = f"{zone.key}:connectivity"
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.last_update_success and self.zone_key in self.coordinator.data.zones
+
+    @property
+    def is_on(self) -> bool | None:
+        status = mapping(self.zone.status.get("connectivity")).get("connectionStatus")
+        return status == "Connected" if status in ("Connected", "Disconnected") else None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        issues = self.zone.connectivity_issues
+        return {"issues": issues, "issue_count": len(issues) if issues is not None else None}
 
 
 class JetsonConnectivity(CoordinatorEntity[JetsonCoordinator], BinarySensorEntity):

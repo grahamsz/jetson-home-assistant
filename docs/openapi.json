@@ -1,14 +1,14 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Unofficial Jetson Home API (reconstruction with limited live checks)",
-    "version": "app-1.2.8-analysis-0.2",
-    "description": "Reverse engineered from the user-supplied Android application. Unofficial and incomplete. Six operations returned HTTP 200 during limited live checks on November 3, 2026; five response schemas matched. The account had zero systems, so installed equipment and controls remain untested. Only paths seen in HTTP callsites are listed. Callback refinements and transformations are annotations, not fully reproduced validators."
+    "title": "Unofficial Jetson Home API (app reconstruction)",
+    "version": "app-1.2.8-analysis-0.3",
+    "description": "Reverse engineered from the user-supplied application, with limited authorized checks on November 3\u20134, 2026. This file preserves 43 app-callsite operations and 309 recovered definitions. Twelve operations returned HTTP 200; five earlier response schemas matched auth/empty-account data. Newer populated responses may extend these types. See live-openapi.json for observed energy and status shapes, including two additional routes. Physical controls remain untested. Refinements and transformations are annotations."
   },
   "servers": [
     {
       "url": "https://autopilot-api.jetsonhome.com",
-      "description": "Production URL found in the app; limited user-authorized authentication and empty-account checks performed"
+      "description": "Production URL; authorized auth, inventory, zone/heat-pump status, air-quality, and energy reads performed"
     }
   ],
   "paths": {
@@ -88,7 +88,7 @@
       "post": {
         "operationId": "requestMagicLinkPost",
         "summary": "requestMagicLink",
-        "description": "Recovered app callsite, live checked on November 3, 2026. Email receipt confirmed; JSON object parsed, complete response schema not checked. A successful sample does not establish all server behavior.",
+        "description": "Recovered app callsite, live checked on 2026-11-03. Email receipt confirmed; JSON object parsed, complete response schema not checked. A successful sample does not establish all server behavior.",
         "x-evidence": {
           "file": "analysis/jetson.js",
           "line": 803565,
@@ -98,7 +98,7 @@
         "security": [],
         "responses": {
           "200": {
-            "description": "HTTP 200 observed on November 3, 2026; Email receipt confirmed; JSON object parsed, complete response schema not checked.",
+            "description": "HTTP 200 observed on 2026-11-03; Email receipt confirmed; JSON object parsed, complete response schema not checked.",
             "content": {
               "application/json": {
                 "schema": {
@@ -166,7 +166,7 @@
       "post": {
         "operationId": "verifyMagicLinkPost",
         "summary": "verifyMagicLink",
-        "description": "Recovered app callsite, live checked on November 3, 2026. One successful exchange; expiresIn 3600 seconds. Expiry and single-use policy untested. A successful sample does not establish all server behavior.",
+        "description": "Recovered app callsite, live checked on 2026-11-03. One successful exchange; expiresIn 3600 seconds. Expiry and single-use policy untested. A successful sample does not establish all server behavior.",
         "x-evidence": {
           "file": "analysis/jetson.js",
           "line": 804017,
@@ -176,7 +176,7 @@
         "security": [],
         "responses": {
           "200": {
-            "description": "HTTP 200 observed on November 3, 2026; One successful exchange; expiresIn 3600 seconds. Expiry and single-use policy untested.",
+            "description": "HTTP 200 observed on 2026-11-03; One successful exchange; expiresIn 3600 seconds. Expiry and single-use policy untested.",
             "content": {
               "application/json": {
                 "schema": {
@@ -208,7 +208,7 @@
       "post": {
         "operationId": "refreshAccessTokenPost",
         "summary": "refreshAccessToken",
-        "description": "Recovered app callsite, live checked on November 3, 2026. One immediate refresh; changed access token, unchanged refresh token, expiresIn 3600 seconds. Authenticated discovery then succeeded. A successful sample does not establish all server behavior.",
+        "description": "Recovered app callsite, live checked on 2026-11-03. One immediate refresh; changed access token, unchanged refresh token, expiresIn 3600 seconds. Authenticated discovery then succeeded. A successful sample does not establish all server behavior.",
         "x-evidence": {
           "file": "analysis/jetson.js",
           "line": 803014,
@@ -218,7 +218,7 @@
         "security": [],
         "responses": {
           "200": {
-            "description": "HTTP 200 observed on November 3, 2026; One immediate refresh; changed access token, unchanged refresh token, expiresIn 3600 seconds. Authenticated discovery then succeeded.",
+            "description": "HTTP 200 observed on 2026-11-03; One immediate refresh; changed access token, unchanged refresh token, expiresIn 3600 seconds. Authenticated discovery then succeeded.",
             "content": {
               "application/json": {
                 "schema": {
@@ -250,7 +250,7 @@
       "get": {
         "operationId": "getCurrentUserGet",
         "summary": "getCurrentUser",
-        "description": "Recovered app callsite, live checked on November 3, 2026. One account response matched the recovered schema; account fields are not published. A successful sample does not establish all server behavior.",
+        "description": "Recovered app callsite, live checked on 2026-11-03. One account response matched the recovered schema; account fields are not published. A successful sample does not establish all server behavior.",
         "x-evidence": {
           "file": "analysis/jetson.js",
           "line": 921736,
@@ -264,7 +264,7 @@
         ],
         "responses": {
           "200": {
-            "description": "HTTP 200 observed on November 3, 2026; One account response matched the recovered schema; account fields are not published.",
+            "description": "HTTP 200 observed on 2026-11-03; One account response matched the recovered schema; account fields are not published.",
             "content": {
               "application/json": {
                 "schema": {
@@ -324,7 +324,7 @@
       "get": {
         "operationId": "getSystemsGet",
         "summary": "getSystems",
-        "description": "Recovered app callsite, live checked on November 3, 2026. Empty systems array, including after refresh; populated system entries remain untested. A successful sample does not establish all server behavior.",
+        "description": "Recovered app callsite, live checked on 2026-11-04. Earlier empty response matched the recovered schema. Populated inventory now returned HTTP 200; the newer complete schema was not revalidated. A successful sample does not establish all server behavior.",
         "x-evidence": {
           "file": "analysis/jetson.js",
           "line": 921674,
@@ -338,7 +338,7 @@
         ],
         "responses": {
           "200": {
-            "description": "HTTP 200 observed on November 3, 2026; Empty systems array, including after refresh; populated system entries remain untested.",
+            "description": "HTTP 200 observed on 2026-11-04; Earlier empty response matched the recovered schema. Populated inventory now returned HTTP 200; the newer complete schema was not revalidated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -349,10 +349,10 @@
           }
         },
         "x-live-validation": {
-          "date": "2026-11-03",
+          "date": "2026-11-04",
           "http-status": 200,
-          "response-schema-matched": true,
-          "scope": "Empty systems array, including after refresh; populated system entries remain untested."
+          "response-schema-matched": false,
+          "scope": "Earlier empty response matched the recovered schema. Populated inventory now returned HTTP 200; the newer complete schema was not revalidated."
         }
       }
     },
@@ -360,12 +360,12 @@
       "get": {
         "operationId": "getSystemEquipmentGet",
         "summary": "getSystemEquipment",
-        "description": "Recovered static callsite. No live request has been made to verify this route. Schema associations are inferred from the bundled request/response type names and app usage.",
+        "description": "Recovered app callsite, live checked on 2026-11-04. Populated equipment inventory returned HTTP 200 with newer fields; full recovered-schema compatibility not checked. A successful sample does not establish all server behavior.",
         "x-evidence": {
           "file": "analysis/jetson.js",
           "line": 921859,
           "function": "getSystemEquipment",
-          "confidence": "callsite-confirmed; live-unverified"
+          "confidence": "callsite-confirmed; limited-live-check"
         },
         "security": [
           {
@@ -373,8 +373,8 @@
           }
         ],
         "responses": {
-          "2XX": {
-            "description": "Successful response; exact status code not established",
+          "200": {
+            "description": "HTTP 200 observed on 2026-11-04; Populated equipment inventory returned HTTP 200 with newer fields; full recovered-schema compatibility not checked.",
             "content": {
               "application/json": {
                 "schema": {
@@ -383,6 +383,12 @@
               }
             }
           }
+        },
+        "x-live-validation": {
+          "date": "2026-11-04",
+          "http-status": 200,
+          "response-schema-matched": false,
+          "scope": "Populated equipment inventory returned HTTP 200 with newer fields; full recovered-schema compatibility not checked."
         },
         "parameters": [
           {
@@ -400,12 +406,12 @@
       "get": {
         "operationId": "getSystemBoardsGet",
         "summary": "getSystemBoards",
-        "description": "Recovered static callsite. No live request has been made to verify this route. Schema associations are inferred from the bundled request/response type names and app usage.",
+        "description": "Recovered app callsite, live checked on 2026-11-04. Populated board inventory returned HTTP 200; response structure observed. A successful sample does not establish all server behavior.",
         "x-evidence": {
           "file": "analysis/jetson.js",
           "line": 921928,
           "function": "getSystemBoards",
-          "confidence": "callsite-confirmed; live-unverified"
+          "confidence": "callsite-confirmed; limited-live-check"
         },
         "security": [
           {
@@ -413,8 +419,8 @@
           }
         ],
         "responses": {
-          "2XX": {
-            "description": "Successful response; exact status code not established",
+          "200": {
+            "description": "HTTP 200 observed on 2026-11-04; Populated board inventory returned HTTP 200; response structure observed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -423,6 +429,12 @@
               }
             }
           }
+        },
+        "x-live-validation": {
+          "date": "2026-11-04",
+          "http-status": 200,
+          "response-schema-matched": false,
+          "scope": "Populated board inventory returned HTTP 200; response structure observed."
         },
         "parameters": [
           {
@@ -440,12 +452,12 @@
       "get": {
         "operationId": "getSystemZonesGet",
         "summary": "getSystemZones",
-        "description": "Recovered static callsite. No live request has been made to verify this route. Schema associations are inferred from the bundled request/response type names and app usage.",
+        "description": "Recovered app callsite, live checked on 2026-11-04. Populated zone inventory returned HTTP 200 with newer feature metadata. A successful sample does not establish all server behavior.",
         "x-evidence": {
           "file": "analysis/jetson.js",
           "line": 921997,
           "function": "getSystemZones",
-          "confidence": "callsite-confirmed; live-unverified"
+          "confidence": "callsite-confirmed; limited-live-check"
         },
         "security": [
           {
@@ -453,8 +465,8 @@
           }
         ],
         "responses": {
-          "2XX": {
-            "description": "Successful response; exact status code not established",
+          "200": {
+            "description": "HTTP 200 observed on 2026-11-04; Populated zone inventory returned HTTP 200 with newer feature metadata.",
             "content": {
               "application/json": {
                 "schema": {
@@ -463,6 +475,12 @@
               }
             }
           }
+        },
+        "x-live-validation": {
+          "date": "2026-11-04",
+          "http-status": 200,
+          "response-schema-matched": false,
+          "scope": "Populated zone inventory returned HTTP 200 with newer feature metadata."
         },
         "parameters": [
           {
@@ -480,7 +498,7 @@
       "get": {
         "operationId": "getAirQualityClassificationGet",
         "summary": "getAirQualityClassification",
-        "description": "Recovered app callsite, live checked on November 3, 2026. Classification response matched the recovered schema; no installed-device telemetry was read. A successful sample does not establish all server behavior.",
+        "description": "Recovered app callsite, live checked on 2026-11-03. Classification response matched the recovered schema; no installed-device telemetry was read. A successful sample does not establish all server behavior.",
         "x-evidence": {
           "file": "analysis/jetson.js",
           "line": 922066,
@@ -494,7 +512,7 @@
         ],
         "responses": {
           "200": {
-            "description": "HTTP 200 observed on November 3, 2026; Classification response matched the recovered schema; no installed-device telemetry was read.",
+            "description": "HTTP 200 observed on 2026-11-03; Classification response matched the recovered schema; no installed-device telemetry was read.",
             "content": {
               "application/json": {
                 "schema": {
@@ -708,12 +726,12 @@
       "get": {
         "operationId": "getEquipmentHeatPumpStatusGet",
         "summary": "getEquipmentHeatPumpStatus",
-        "description": "Recovered static callsite. No live request has been made to verify this route. Schema associations are inferred from the bundled request/response type names and app usage.",
+        "description": "Recovered app callsite, live checked on 2026-11-04. HTTP 200 with indoor operation fields; the offline outdoor unit returned health only. See live-openapi.json. A successful sample does not establish all server behavior.",
         "x-evidence": {
           "file": "analysis/jetson.js",
           "line": 922422,
           "function": "getEquipmentHeatPumpStatus",
-          "confidence": "callsite-confirmed; live-unverified"
+          "confidence": "callsite-confirmed; limited-live-check"
         },
         "security": [
           {
@@ -721,8 +739,8 @@
           }
         ],
         "responses": {
-          "2XX": {
-            "description": "Successful response; exact status code not established",
+          "200": {
+            "description": "HTTP 200 observed on 2026-11-04; HTTP 200 with indoor operation fields; the offline outdoor unit returned health only. See live-openapi.json.",
             "content": {
               "application/json": {
                 "schema": {
@@ -731,6 +749,12 @@
               }
             }
           }
+        },
+        "x-live-validation": {
+          "date": "2026-11-04",
+          "http-status": 200,
+          "response-schema-matched": false,
+          "scope": "HTTP 200 with indoor operation fields; the offline outdoor unit returned health only. See live-openapi.json."
         },
         "parameters": [
           {
@@ -748,12 +772,12 @@
       "get": {
         "operationId": "getZoneStatusGet",
         "summary": "getZoneStatus",
-        "description": "Recovered static callsite. No live request has been made to verify this route. Schema associations are inferred from the bundled request/response type names and app usage.",
+        "description": "Recovered app callsite, live checked on 2026-11-04. HTTP 200 with connectivity and telemetry-freshness additions; see live-openapi.json. A successful sample does not establish all server behavior.",
         "x-evidence": {
           "file": "analysis/jetson.js",
           "line": 922491,
           "function": "getZoneStatus",
-          "confidence": "callsite-confirmed; live-unverified"
+          "confidence": "callsite-confirmed; limited-live-check"
         },
         "security": [
           {
@@ -761,8 +785,8 @@
           }
         ],
         "responses": {
-          "2XX": {
-            "description": "Successful response; exact status code not established",
+          "200": {
+            "description": "HTTP 200 observed on 2026-11-04; HTTP 200 with connectivity and telemetry-freshness additions; see live-openapi.json.",
             "content": {
               "application/json": {
                 "schema": {
@@ -771,6 +795,12 @@
               }
             }
           }
+        },
+        "x-live-validation": {
+          "date": "2026-11-04",
+          "http-status": 200,
+          "response-schema-matched": false,
+          "scope": "HTTP 200 with connectivity and telemetry-freshness additions; see live-openapi.json."
         },
         "parameters": [
           {
@@ -788,12 +818,12 @@
       "get": {
         "operationId": "getAirQualityGet",
         "summary": "getAirQuality",
-        "description": "Recovered static callsite. No live request has been made to verify this route. Schema associations are inferred from the bundled request/response type names and app usage.",
+        "description": "Recovered app callsite, live checked on 2026-11-04. HTTP 200 with full access and pollutant values, measuredAt and settling fields. Samples can be stale. A successful sample does not establish all server behavior.",
         "x-evidence": {
           "file": "analysis/jetson.js",
           "line": 922560,
           "function": "getAirQuality",
-          "confidence": "callsite-confirmed; live-unverified"
+          "confidence": "callsite-confirmed; limited-live-check"
         },
         "security": [
           {
@@ -801,8 +831,8 @@
           }
         ],
         "responses": {
-          "2XX": {
-            "description": "Successful response; exact status code not established",
+          "200": {
+            "description": "HTTP 200 observed on 2026-11-04; HTTP 200 with full access and pollutant values, measuredAt and settling fields. Samples can be stale.",
             "content": {
               "application/json": {
                 "schema": {
@@ -811,6 +841,12 @@
               }
             }
           }
+        },
+        "x-live-validation": {
+          "date": "2026-11-04",
+          "http-status": 200,
+          "response-schema-matched": false,
+          "scope": "HTTP 200 with full access and pollutant values, measuredAt and settling fields. Samples can be stale."
         },
         "parameters": [
           {

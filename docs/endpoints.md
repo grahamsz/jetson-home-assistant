@@ -1,6 +1,8 @@
 # HTTP callsite inventory
 
-All 43 method/path combinations below are confirmed in the app bundle. Six operations returned HTTP 200 during user-authorized production checks on November 3, 2026; five response schemas matched live data. The account had zero systems, so installed-device routes remain untested. Other response associations come from bundled API types, and their concrete success codes and server enforcement remain unverified.
+All 43 operations below are confirmed in app callsites. 12 have observed HTTP 200 results from authorized checks on November 3–4, 2026. Five earlier response schemas matched auth/empty-account data; newer populated responses were observed without full schema revalidation and may extend the recovered types.
+
+The live-discovered energy/current and generic equipment-status routes are additional to this table. See [live OpenAPI](live-openapi.json), [energy](ENERGY.md), and [status/pressure findings](LIVE_TELEMETRY.md). The combined inventory has 45 unique method/path combinations.
 
 See [API guide](API.md) for semantics, [validation details](VALIDATION.md) for live-test limits, and [schema catalog](schema-catalog.md) for field definitions.
 
@@ -14,18 +16,18 @@ See [API guide](API.md) for semantics, [validation details](VALIDATION.md) for l
 | POST | `/v1/auth/refresh` | RefreshTokenRequest | RefreshTokenResponse | `refreshAccessToken`, L803014 | HTTP 200; schema matched |
 | GET | `/v1/users/me` | — | GetCurrentUserResponse | `getCurrentUser`, L921736 | HTTP 200; schema matched |
 | PATCH | `/v1/users/me` | UpdateCurrentUserRequest | UpdateCurrentUserResponse | `updateCurrentUser`, L921796 | Not tested |
-| GET | `/v1/systems` | — | GetSystemsResponse | `getSystems`, L921674 | HTTP 200; schema matched |
-| GET | `/v1/systems/{systemId}/equipment` | — | GetSystemEquipmentResponse | `getSystemEquipment`, L921859 | Not tested |
-| GET | `/v1/systems/{systemId}/boards` | — | GetSystemBoardsResponse | `getSystemBoards`, L921928 | Not tested |
-| GET | `/v1/systems/{systemId}/zones` | — | GetSystemZonesResponse | `getSystemZones`, L921997 | Not tested |
+| GET | `/v1/systems` | — | GetSystemsResponse | `getSystems`, L921674 | HTTP 200; schema not checked |
+| GET | `/v1/systems/{systemId}/equipment` | — | GetSystemEquipmentResponse | `getSystemEquipment`, L921859 | HTTP 200; schema not checked |
+| GET | `/v1/systems/{systemId}/boards` | — | GetSystemBoardsResponse | `getSystemBoards`, L921928 | HTTP 200; schema not checked |
+| GET | `/v1/systems/{systemId}/zones` | — | GetSystemZonesResponse | `getSystemZones`, L921997 | HTTP 200; schema not checked |
 | GET | `/v1/airQuality/classification` | — | GetAirQualityClassificationResponse | `getAirQualityClassification`, L922066 | HTTP 200; schema matched |
 | GET | `/v1/systems/{systemId}/members` | — | GetSystemMembersResponse | `getSystemMembers`, L922126 | Not tested |
 | POST | `/v1/systems/{systemId}/members` | AddSystemMemberRequest | AddSystemMemberResponse | `upsertSystemMember`, L922195 | Not tested |
 | PATCH | `/v1/systems/{systemId}/members/{memberId}` | UpdateSystemMemberRequest | UpdateSystemMemberResponse | `upsertSystemMember`, L922195 | Not tested |
 | DELETE | `/v1/systems/{systemId}/members/{memberId}` | — | RemoveSystemMemberResponse | `removeSystemMember`, L922344 | Not tested |
-| GET | `/v1/equipment/{equipmentId}/heatpump/status` | — | GetEquipmentHeatPumpStatusResponse | `getEquipmentHeatPumpStatus`, L922422 | Not tested |
-| GET | `/v1/zones/{zoneId}/status` | — | GetZoneStatusResponse | `getZoneStatus`, L922491 | Not tested |
-| GET | `/v1/zones/{zoneId}/airQuality` | — | GetAirQualityResponse | `getAirQuality`, L922560 | Not tested |
+| GET | `/v1/equipment/{equipmentId}/heatpump/status` | — | GetEquipmentHeatPumpStatusResponse | `getEquipmentHeatPumpStatus`, L922422 | HTTP 200; schema not checked |
+| GET | `/v1/zones/{zoneId}/status` | — | GetZoneStatusResponse | `getZoneStatus`, L922491 | HTTP 200; schema not checked |
+| GET | `/v1/zones/{zoneId}/airQuality` | — | GetAirQualityResponse | `getAirQuality`, L922560 | HTTP 200; schema not checked |
 | POST | `/v1/zones/{zoneId}/hvac/mode` | SetHvacModeRequest | SetHvacModeResponse | `setZoneHvacMode`, L922629 | Not tested |
 | POST | `/v1/zones/{zoneId}/ambientTemperature/setpoint` | SetAmbientTemperatureSetpointRequest | SetAmbientTemperatureSetpointResponse | `setZoneAmbientTemperatureSetpoint`, L922701 | Not tested |
 | GET | `/v1/systems/{systemId}/schedules` | — | GetAllSchedulesResponse | `getSystemSchedules`, L922774 | Not tested |

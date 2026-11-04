@@ -49,7 +49,7 @@
       },
       "polling": {
         "title": "Polling interval",
-        "description": "Update known zones' thermostat, temperature, humidity, and air-quality readings every 30 to 900 seconds. Connection status is checked with the next update once five minutes have passed. Use Refresh configuration after changing installed equipment or zones.",
+        "description": "Update known zones, available air quality, power/energy readings, and heat-pump operation every 30 to 900 seconds. Equipment connection status is checked with the next update once five minutes have passed. Use Refresh configuration after changing installed equipment or zones.",
         "data": {"scan_interval": "Polling interval (seconds)"}
       },
       "refresh_configuration": {

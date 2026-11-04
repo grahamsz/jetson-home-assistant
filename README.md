@@ -10,13 +10,18 @@ Experimental custom integration built by reverse engineering the user-supplied J
 - Temperature and relative-humidity sensors when those features are reported.
 - One Home Assistant device per Jetson system, containing all its zone controls/readings and named equipment-connectivity diagnostics. Multiple systems remain separate.
 - Separate HVAC mode, fan mode, and HVAC activity sensors for Recorder/history, with no additional API calls.
+- Whole-home and named per-load power/daily-energy sensors, with source timestamps and local-midnight energy resets.
+- Zone connection/issues, telemetry status, last device-reading time, and reported per-unit operation/fan diagnostics.
 - Zone air-quality classification, plus CO₂, PM2.5, and TVOC measurements when a matching monitor and full API access are reported. Restricted access exposes only the overall classification.
 - An optional humidifier entity with on/off and target percentage, only when the zone advertises `Humidify` capability and valid limits.
 - Email magic-link setup, refresh-token rotation, reauthentication, configurable polling, and allowlisted diagnostics.
 - [API guide](docs/API.md), [43-operation endpoint inventory](docs/endpoints.md), [309-definition schema catalog](docs/schema-catalog.md), [OpenAPI 3.1 reference](docs/openapi.json), and [humidity investigation](docs/HUMIDITY.md).
-- [Home Assistant device/entity structure](docs/HA_STRUCTURE.md), including what remains unfinished for energy monitoring.
+- [Home Assistant device/entity structure](docs/HA_STRUCTURE.md), including power, energy, and diagnostic sensors.
+- [Live energy API and HA mapping](docs/ENERGY.md), [new status fields and pressure findings](docs/LIVE_TELEMETRY.md), and a [live OpenAPI supplement](docs/live-openapi.json).
 
-**Status (prototype 0.4.0):** 80 protocol/model/polling/migration tests pass, using a local HTTP mock server and in-memory registry adapters. Live magic-link verification, account lookup, empty-system discovery, air-quality classification, and token refresh returned HTTP 200 with matching recovered response schemas on November 3, 2026. Formatting, linting, and Python syntax are checked. Consolidation in a real HA registry, the new history sensors, and installed-device behavior still require testing. See [validation scope](docs/VALIDATION.md).
+**Status (prototype 0.5.0):** 109 protocol/model/polling/migration/telemetry tests pass, using a local HTTP mock server and in-memory registry adapters. Authorized live reads established populated inventory, zone and heat-pump status, full air-quality access, and the current energy route on November 3–4, 2026. A calendar-day energy reset was observed across local midnight. Earlier auth/empty-account responses matched recovered schemas. HA entity loading, consolidation, Recorder/Energy statistics, and physical controls still need runtime checks. See [validation scope](docs/VALIDATION.md).
+
+Version 0.5.0 adds power/energy and the newer device telemetry fields. It also includes the user's stale-AQ fix: readings older than one hour, settling pollutants, and invalid/missing/future timestamps are unavailable. An idle fan alone does not invalidate recent measurements. See [energy](docs/ENERGY.md) and [live telemetry](docs/LIVE_TELEMETRY.md).
 
 Version 0.4.0 consolidates the earlier hub/equipment/zone rows under the existing system device, moves registered entities before removing empty old rows, and keeps entity IDs. Zone and equipment names distinguish the combined device's entities. Device-based automations referring to removed device IDs need their device selected again; entity-based references keep their IDs. See [grouping and migration](docs/HA_STRUCTURE.md) and [history sensors](docs/HISTORY.md).
 
@@ -43,9 +48,9 @@ An account with no systems can be added before installation. After commissioning
 
 Account setup creates a separate entry and credential set for each email address. Robust handling of account-email changes and two accounts sharing the same physical system is still pending; configure each system through one account for this prototype.
 
-Jetson Home's options menu has **Polling interval** and **Refresh configuration** actions. Routine polling defaults to 30 seconds and can be changed to 30–900 seconds. It reads known zones' status and eligible air quality: `zone_count + air_quality_zone_count` requests per ordinary cycle. Connection status is updated separately on the next poll after five minutes, adding `1 + system_count` reads for configured systems' health/equipment. Those checks update liveness only; they do not discover or rename hardware or change zone membership.
+Jetson Home's options menu has **Polling interval** and **Refresh configuration** actions. Routine polling defaults to 30 seconds and can be changed to 30–900 seconds. It reads known zones' status, eligible air quality, energy for systems with a known EnergyMonitor, and selected heat-pump units' status. Equipment connection checks run separately after five minutes, adding `1 + system_count` reads. Fresh zone connectivity from the status response takes priority over cached system health. These reads do not discover or rename hardware or change zone membership.
 
-Startup, reload, and **Refresh configuration** perform a full scan: `1 + 3 × system_count + zone_count + air_quality_zone_count` reads. An empty account makes no background discovery requests. For one zone with an air-quality monitor, an ordinary update uses two reads, a connectivity update uses four, and a full configuration refresh uses six. Authentication renewal can add requests. See [request schedules and failure behavior](docs/POLLING.md).
+Startup, reload, and **Refresh configuration** perform a full scan. An empty account makes no background discovery requests. For one system, one zone, air quality, an energy monitor, and indoor/outdoor heat-pump units, an ordinary update uses five reads, a connectivity update seven, and a full refresh nine. Authentication renewal can add requests. See [request schedules and failure behavior](docs/POLLING.md).
 
 API outages make affected entities unavailable; device communication can still fail even when cloud reads succeed. HTTP 200 with `result: "unreachable"` is treated as a failed command. Optional inventory or air-quality errors are isolated from climate updates. Commands are not optimistically reported as physical changes.
 
@@ -55,7 +60,7 @@ Each API system is one service device named for the system. Its climate entities
 
 Air-quality telemetry comes from a **zone** endpoint without a physical source ID. It is shown as a zone-named reading on the system device, without copying it onto each installed monitor. Detailed pollutant values require `access: full`; Jetson's limited response exposes only the overall level. The overall sensor's attributes show `access` and, when reported, `missing_entitlement: jetson_care`. Account diagnostics include the access state and whether the request failed. An API error or null measurement is never reported as zero.
 
-**Energy consumption is not implemented yet.** A discovered energy monitor can report a named connectivity diagnostic on the system device, but no W/kWh sensors are created. The bundle contains energy response schemas without an established read route. The presence of hardware alone is insufficient to create usable Energy-dashboard measurements. See [the mapping and remaining work](docs/HA_STRUCTURE.md).
+Power and daily-energy readings now use the confirmed energy/current endpoint. The root whole-home total is exposed once, and named load readings remain separate. Daily kWh sensors use total plus an explicit timezone-aware reset; source freshness and invalid values are checked. Backend residuals and unverified heat-strip components are not added to totals. Choose appropriate energy sources in the Energy dashboard and verify statistics in your instance; see [energy mapping and caveats](docs/ENERGY.md).
 
 ## Humidity
 
@@ -70,7 +75,7 @@ No user-selectable dehumidification target or Dry command was found. An operatin
 - Jetson's `Auto` maps to Home Assistant `heat_cool`. The recovered write endpoint accepts **one shared Celsius target**. Separate heat/cool targets are retained as diagnostic attributes if reported, but are not independently writable. The integration intentionally rejects low/high target writes rather than inventing a route.
 - Fan modes are `auto`, `1`, `2`, `3`, limited by the zone's advertised maximum. Actual fan behavior in FanOnly and interactions with circulation need hardware validation.
 - Target temperatures are rounded to the reported Celsius step, including Fahrenheit requests converted by Home Assistant. Exact Fahrenheit/Celsius rounding behavior needs comparison with hardware.
-- Schedules, presets, vacation, energy telemetry, installer settings, and equipment provisioning are documented but not implemented as entities or services.
+- Schedules, presets, vacation, installer settings, and equipment provisioning are documented but not implemented as entities or services. No pressure read interface or separate TEMCO temperature/humidity read was established by the tested routes.
 - Air quality is enabled for zones associated with reported TEMCO-AQM equipment, using explicit zone/equipment membership or the reported parent equipment when the peripheral has no own zone assignment. Missing or different installation metadata may require adjustments after hardware validation.
 - Reported equipment is grouped under the system device. Hardware inventory does not guarantee a numeric measurement; equipment without a connection-status field gets no fabricated connectivity entity.
 - Some API fields are explicitly deprecated but still required by the app's schema. The client supports the recovered newer fields and selected older temperature/fan fields; live schema drift may need adjustments.
