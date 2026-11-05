@@ -2,7 +2,7 @@
 
 All 43 operations below are confirmed in app callsites. 12 have observed HTTP 200 results from authorized checks on November 3–4, 2026. Five earlier response schemas matched auth/empty-account data; newer populated responses were observed without full schema revalidation and may extend the recovered types.
 
-The live-discovered energy/current and generic equipment-status routes are additional to this table. See [live OpenAPI](live-openapi.json), [energy](ENERGY.md), and [status/pressure findings](LIVE_TELEMETRY.md). The combined inventory has 45 unique method/path combinations.
+The live-discovered energy/current, generic equipment-status, and separate zone airQuality/current and airQuality/history routes are additional to this table. See [live OpenAPI](live-openapi.json), [energy](ENERGY.md), and [status/pressure findings](LIVE_TELEMETRY.md). The combined inventory has 47 unique method/path combinations.
 
 See [API guide](API.md) for semantics, [validation details](VALIDATION.md) for live-test limits, and [schema catalog](schema-catalog.md) for field definitions.
 

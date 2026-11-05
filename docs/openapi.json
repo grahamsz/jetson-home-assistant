@@ -3,7 +3,7 @@
   "info": {
     "title": "Unofficial Jetson Home API (app reconstruction)",
     "version": "app-1.2.8-analysis-0.3",
-    "description": "Reverse engineered from the user-supplied application, with limited authorized checks on November 3\u20134, 2026. This file preserves 43 app-callsite operations and 309 recovered definitions. Twelve operations returned HTTP 200; five earlier response schemas matched auth/empty-account data. Newer populated responses may extend these types. See live-openapi.json for observed energy and status shapes, including two additional routes. Physical controls remain untested. Refinements and transformations are annotations."
+    "description": "Reverse engineered from the user-supplied application, with limited authorized checks on November 3\u20134, 2026. This file preserves 43 app-callsite operations and 309 recovered definitions. Twelve operations returned HTTP 200; five earlier response schemas matched auth/empty-account data. Newer populated responses may extend these types. See live-openapi.json for observed energy and status shapes, including four additional routes. Physical controls remain untested. Refinements and transformations are annotations."
   },
   "servers": [
     {

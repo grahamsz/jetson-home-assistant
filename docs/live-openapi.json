@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Jetson Home live API observations",
-    "version": "2026-11-04",
-    "description": "Four live-observed operations supplement the 43 app-callsite operations in openapi.json. Energy/current and generic equipment status are additional routes; zone status and heat-pump status extend already documented responses. Nullable energy readings are also informed by the bundled energy types. Observations do not establish all valid fields, values, entitlements, freshness policies, or error responses."
+    "version": "2026-11-04-aq",
+    "description": "Six live-observed operations supplement the 43 app-callsite operations in openapi.json. Energy/current, generic equipment status, and the separate zone airQuality/current and airQuality/history endpoints are four additional routes, giving 47 distinct operations overall. Zone status and heat-pump status extend already documented responses. Nullable readings are also informed by bundled types. Observations do not establish all valid fields, values, entitlements, freshness policies, or error responses."
   },
   "servers": [
     {
@@ -154,6 +154,116 @@
                 }
               }
             }
+          }
+        },
+        "x-evidence": {
+          "source": "authorized-live-observation",
+          "date": "2026-11-04",
+          "account-data-omitted": true
+        }
+      }
+    },
+    "/v1/zones/{zoneId}/airQuality/current": {
+      "get": {
+        "summary": "Current zone air quality without bundled history",
+        "description": "HTTP 200 and this response structure were observed in authorized account reads on November 3\u20134, 2026 (America/Denver). This is a sample-derived description, not a complete vendor contract.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "zoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Observed successful JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservedAirQualityCurrent"
+                }
+              }
+            }
+          }
+        },
+        "x-evidence": {
+          "source": "authorized-live-observation",
+          "date": "2026-11-04",
+          "account-data-omitted": true
+        }
+      }
+    },
+    "/v1/zones/{zoneId}/airQuality/history": {
+      "get": {
+        "summary": "Zone air-quality buckets and summary for a time range",
+        "description": "HTTP 200 and this response structure were observed in authorized account reads on November 3\u20134, 2026 (America/Denver). This is a sample-derived description, not a complete vendor contract.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "zoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startAt",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endAt",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "granularity",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "hour",
+                "day",
+                "month"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Observed successful JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservedAirQualityHistory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Observed query validation error when startAt, endAt, and granularity are omitted."
           }
         },
         "x-evidence": {
@@ -486,6 +596,533 @@
         "additionalProperties": true,
         "required": [
           "features"
+        ]
+      },
+      "ObservedAirQualityCurrent": {
+        "type": "object",
+        "properties": {
+          "access": {
+            "type": "string",
+            "description": "Only full access observed for this route; limited-access shape unverified."
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "current": {
+            "type": "object",
+            "properties": {
+              "overall": {
+                "type": "string"
+              },
+              "lastUpdatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "fanRunStartedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "co2": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "level": {
+                    "type": "string"
+                  },
+                  "measuredAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time"
+                  },
+                  "settling": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "value",
+                  "level"
+                ]
+              },
+              "pm25": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "level": {
+                    "type": "string"
+                  },
+                  "measuredAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time"
+                  },
+                  "settling": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "value",
+                  "level"
+                ]
+              },
+              "tvoc": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "level": {
+                    "type": "string"
+                  },
+                  "measuredAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time"
+                  },
+                  "settling": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "value",
+                  "level"
+                ]
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "overall",
+              "lastUpdatedAt",
+              "co2",
+              "pm25",
+              "tvoc"
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "access",
+          "timezone",
+          "current"
+        ]
+      },
+      "ObservedAirQualityHistory": {
+        "type": "object",
+        "properties": {
+          "access": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "granularity": {
+            "enum": [
+              "hour",
+              "day",
+              "month"
+            ]
+          },
+          "start": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "end": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "earliestDataAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "start": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "end": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "coverage": {
+                  "type": "string",
+                  "description": "sampled observed; other values unverified."
+                },
+                "overall": {
+                  "type": "string"
+                },
+                "co2": {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "level": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true,
+                  "required": [
+                    "value",
+                    "level"
+                  ]
+                },
+                "pm25": {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "level": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true,
+                  "required": [
+                    "value",
+                    "level"
+                  ]
+                },
+                "tvoc": {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "level": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true,
+                  "required": [
+                    "value",
+                    "level"
+                  ]
+                }
+              },
+              "additionalProperties": true,
+              "required": [
+                "start",
+                "end",
+                "coverage",
+                "overall",
+                "co2",
+                "pm25",
+                "tvoc"
+              ]
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "overall": {
+                "type": "object",
+                "properties": {
+                  "average": {
+                    "type": "string"
+                  },
+                  "peak": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "string"
+                      },
+                      "start": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      },
+                      "end": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      }
+                    },
+                    "additionalProperties": true,
+                    "required": [
+                      "level",
+                      "start",
+                      "end"
+                    ]
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "average",
+                  "peak"
+                ]
+              },
+              "co2": {
+                "type": "object",
+                "properties": {
+                  "average": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "level": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true,
+                    "required": [
+                      "value",
+                      "level"
+                    ]
+                  },
+                  "peak": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "level": {
+                        "type": "string"
+                      },
+                      "start": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      },
+                      "end": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      }
+                    },
+                    "additionalProperties": true,
+                    "required": [
+                      "value",
+                      "level",
+                      "start",
+                      "end"
+                    ]
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "average",
+                  "peak"
+                ]
+              },
+              "pm25": {
+                "type": "object",
+                "properties": {
+                  "average": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "level": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true,
+                    "required": [
+                      "value",
+                      "level"
+                    ]
+                  },
+                  "peak": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "level": {
+                        "type": "string"
+                      },
+                      "start": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      },
+                      "end": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      }
+                    },
+                    "additionalProperties": true,
+                    "required": [
+                      "value",
+                      "level",
+                      "start",
+                      "end"
+                    ]
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "average",
+                  "peak"
+                ]
+              },
+              "tvoc": {
+                "type": "object",
+                "properties": {
+                  "average": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "level": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true,
+                    "required": [
+                      "value",
+                      "level"
+                    ]
+                  },
+                  "peak": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": [
+                          "number",
+                          "null"
+                        ]
+                      },
+                      "level": {
+                        "type": "string"
+                      },
+                      "start": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      },
+                      "end": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      }
+                    },
+                    "additionalProperties": true,
+                    "required": [
+                      "value",
+                      "level",
+                      "start",
+                      "end"
+                    ]
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "average",
+                  "peak"
+                ]
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "overall",
+              "co2",
+              "pm25",
+              "tvoc"
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "description": "Observed full-access, populated history responses. Empty/gapped and limited-access shapes unverified; aggregation semantics are not fully established.",
+        "required": [
+          "access",
+          "timezone",
+          "granularity",
+          "start",
+          "end",
+          "earliestDataAt",
+          "buckets",
+          "summary"
         ]
       }
     }

@@ -49,4 +49,6 @@ No pressure readings were obtained. Heat-pump telemetry/metrics/pressure guesses
 
 The zone air-quality endpoint returned access full with CO₂, PM2.5, and TVOC values, despite the earlier subscription hypothesis. This establishes access for those reads, not a permanent entitlement policy. Zone readings are not separate supply/return measurements.
 
+A subsequent 57-candidate GET search found separate `/airQuality/current` and parameterized `/airQuality/history` routes, including hourly/daily/monthly buckets and summaries. Sensor `/status` responses remained health-only. See [the new AQ endpoints and exact query parameters](AIR_QUALITY_API.md).
+
 Those AQ samples were older than the thermostat/power data. The user's freshness fix is included: samples older than one hour, missing/invalid/naive/future timestamps, settling pollutants, and missing numeric values become unavailable. A stopped fan does not by itself invalidate a recent sample. The source last_updated_at, per-pollutant measured_at/settling, access, and missing entitlement attributes help distinguish these conditions.

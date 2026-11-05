@@ -19,6 +19,7 @@ Experimental custom integration built by reverse engineering the user-supplied J
 - [API guide](docs/API.md), [43-operation endpoint inventory](docs/endpoints.md), [309-definition schema catalog](docs/schema-catalog.md), [OpenAPI 3.1 reference](docs/openapi.json), and [humidity investigation](docs/HUMIDITY.md).
 - [Home Assistant device/entity structure](docs/HA_STRUCTURE.md), including power, energy, and diagnostic sensors.
 - [Live energy API and HA mapping](docs/ENERGY.md), [new status fields and pressure findings](docs/LIVE_TELEMETRY.md), a [live OpenAPI supplement](docs/live-openapi.json), and [community hardware reports / schedule design](docs/COMMUNITY_REPORTS.md).
+- [Separate AQ current and history endpoints](docs/AIR_QUALITY_API.md), including required history parameters, response fields, and live-search limits. These bring the combined API inventory to 47 distinct operations; integration polling is unchanged.
 
 **Status (prototype 0.7.0):** 150 protocol/model/polling/migration/telemetry tests pass, using a local HTTP mock server and in-memory registry adapters. Authorized live reads established populated inventory, zone and heat-pump status, full air-quality access, and the current energy route on November 3–4, 2026. A calendar-day energy reset was observed across local midnight. Earlier auth/empty-account responses matched recovered schemas. HA entity loading, consolidation, Recorder/Energy statistics, and physical controls still need runtime checks. See [validation scope](docs/VALIDATION.md).
 
