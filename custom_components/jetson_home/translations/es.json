@@ -185,10 +185,12 @@
         }
       },
       "telemetry_status": {
-        "name": "{zone}: estado de telemetría"
-      },
-      "observed_at": {
-        "name": "{zone}: última lectura del equipo"
+        "name": "{zone}: estado de telemetría",
+        "state_attributes": {
+          "last_device_reading": {
+            "name": "Última lectura del equipo"
+          }
+        }
       },
       "main_power": {
         "name": "Potencia principal",

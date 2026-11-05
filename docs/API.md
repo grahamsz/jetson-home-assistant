@@ -4,13 +4,14 @@ This reference describes **static evidence from Jetson Home Android 1.2.8**, pac
 
 ## Evidence and scope
 
-Four evidence levels are kept separate:
+Five evidence levels are kept separate:
 
 | Level | Meaning |
 | --- | --- |
 | Callsite confirmed | A decoded function constructs the method, URL, and request payload. Live validation is recorded separately. |
 | Schema confirmed | A bundled `@jetsonhome/autopilot-api-schema` type defines fields, enums, or validation rules. This alone does not establish a reachable route. |
 | Live checked | A user-authorized request reached production. The observed status and response-validation scope are recorded in the endpoint inventory and validation notes. |
+| Community reported | A user-supplied report describes hardware use by another bridge; it was not independently reproduced by this project. See [community evidence](COMMUNITY_REPORTS.md). |
 | Inferred / unknown | Backend behavior, hardware dependencies, or operational semantics that cannot be established from client code alone. |
 
 The [endpoint inventory](endpoints.md) contains **43 method/path combinations on 33 paths** observed in app HTTP callsites. The [schema catalog](schema-catalog.md) and [JSON definitions](recovered-schemas.json) contain **309 named definitions**, including shared, older, installer, administrative, and unused types. The [OpenAPI document](openapi.json) combines observed routes with matched schemas. Request/response schema associations are reconstructed from names, shapes, and client usage; five response schemas matched earlier live responses. Twelve app operations have an observed HTTP 200 result. Untested operations retain `2XX` rather than an invented exact success code.
@@ -74,7 +75,7 @@ X-App-Install-ID: <persistent-install-id>
 
 `Content-Type` applies to JSON bodies. The app's API client initializes `app-version` and obtains the bearer token from its auth provider. Auth helper calls use a separate HTTP client and JSON headers; do not assume all authenticated API headers are required there.
 
-**`X-App-Install-ID` is a locally generated installation identifier, separate from the authentication token.** The traced `getOrCreateAppInstallId` function reads the secure-storage key `jetson_app_install_id`; if no value exists, it generates a UUID v4 and stores it for reuse. It does not request this ID from Jetson or derive it from account credentials. The prototype follows the same pattern with its own persistent UUID, so extracting the phone app's ID is unnecessary. Whether the backend makes the header mandatory or associates an authenticated session with a particular ID remains unverified.
+**`X-App-Install-ID` is a locally generated installation identifier, separate from the authentication token.** The traced `getOrCreateAppInstallId` function reads the secure-storage key `jetson_app_install_id`; if no value exists, it generates a UUID v4 and stores it for reuse. It does not request this ID from Jetson or derive it from account credentials. The prototype follows the same pattern with its own persistent UUID, so extracting the phone app's ID is unnecessary. A [community bridge report](COMMUNITY_REPORTS.md) describes successful API and refresh calls without this header using app-version 1.2.7 and an iOS user agent. It was therefore apparently optional in that context; universal requirements, future behavior, and possible session associations are not established. This integration continues sending its own generated ID.
 
 The `Authorization` bearer token is different: Jetson issues it through the magic-link exchange below. It cannot be replaced with a made-up UUID. Copying an app access token would provide an expiring credential rather than a durable login; the prototype's sign-in and refresh flow obtains and renews its own server-issued credentials.
 
@@ -315,7 +316,7 @@ Vacation: `GET` / `PUT /v1/systems/{systemId}/vacation`. The GET response contai
 
 The schema explicitly requires **system-local datetimes without timezone offsets**, including no `Z` suffix. The example is not a recommended schedule. Do not convert these fields to UTC on the assumption that they are ordinary RFC3339 instants. Disabling vacation uses `enabled: false`; no separate DELETE vacation callsite was found.
 
-Manual HVAC changes may interact with active schedules or vacation state. The client has schedule pause/resume state and optimistic-cache handling, but backend override duration and restoration rules need live testing.
+Manual HVAC changes may interact with active schedules or vacation state. A [community bridge report](COMMUNITY_REPORTS.md) says app setting changes pause a Weekly schedule until it is explicitly resumed, and reports daily hardware use of the documented resume call. This project has not independently exercised those commands; vacation interactions and behavior across models/firmware remain open. The report also confirms circulation minutes/hour and the existing HVAC/temperature command formats in that bridge's installation.
 
 ## Settings, members, and claim
 

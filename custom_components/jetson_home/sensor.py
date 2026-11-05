@@ -47,10 +47,12 @@ async def async_setup_entry(
     def discover() -> None:
         entities = []
         for key, zone in coordinator.data.zones.items():
-            for kind in ("telemetry_status", "observed_at"):
-                if getattr(zone, kind) is not None and (key, kind) not in known:
-                    known.add((key, kind))
-                    entities.append(JetsonZoneTelemetrySensor(coordinator, zone, kind))
+            if (zone.telemetry_status is not None or zone.observed_at is not None) and (
+                key,
+                "telemetry_status",
+            ) not in known:
+                known.add((key, "telemetry_status"))
+                entities.append(JetsonZoneTelemetrySensor(coordinator, zone))
             for kind, present in (
                 ("temperature", bool(zone.ambient)),
                 ("humidity", bool(zone.humidity)),

@@ -1,6 +1,6 @@
 # Power, daily energy, and live endpoint findings
 
-Version **0.6.0** labels the primary readings **Main power** and **Main energy today**, and exposes heat-strip power separately. These readings cover the monitored circuits, not the whole home. The bundled React app's older GetEnergyCurrentResponse is not the current wire shape: live loads are now keyed maps, while a separate root loads array supplies their labels and equipment IDs.
+The primary readings are labeled **Main power** and **Main energy today**, with heat-strip power exposed separately. Their coverage depends on clamp placement and installation wiring: Main can cover equipment circuits or the whole home. The neutral label avoids assuming that coverage. A [community report](COMMUNITY_REPORTS.md) describes service-conductor clamps and apparent whole-home coverage, with utility-meter comparison still pending. The bundled React app's older GetEnergyCurrentResponse is not the current wire shape: live loads are now keyed maps, while a separate root loads array supplies their labels and equipment IDs.
 
 ## Read endpoint
 
@@ -38,7 +38,7 @@ All energy entities share their containing system device:
 
 The Main total is exposed once per system, not duplicated for each zone. Load labels include “load” (for example Main load power) to distinguish them from Main power when a load itself is named Main. Heat-strip power uses a separate sensor and is not added to the Main or load readings. Relationships between those counters must be checked against the installation. No residual sensor or calculated combined total is created. These reads do not provide separate supply/return temperature, humidity, or pressure readings.
 
-For the Energy dashboard, use daily energy as individual equipment/circuit consumption where its coverage is understood. Main energy today does not establish a whole-home or grid meter. Avoid overlapping consumption sources. Sensor state-class/unit compatibility follows [HA's sensor definitions](https://contributors.home-assistant.io/core/entities/sensor/); actual dashboard/Recorder behavior still needs checking in the installed instance.
+For the Energy dashboard, choose the source's role based on its verified coverage: equipment/circuit consumption for equipment clamps, or the appropriate main source if service coverage has been confirmed. The API field name alone does not establish a whole-home or grid meter. Avoid overlapping consumption sources. Sensor state-class/unit compatibility follows [HA's sensor definitions](https://contributors.home-assistant.io/core/entities/sensor/); actual dashboard/Recorder behavior still needs checking in the installed instance.
 
 ## Calendar resets and corrections
 

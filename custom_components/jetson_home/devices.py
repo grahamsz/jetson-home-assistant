@@ -14,6 +14,18 @@ def sync_devices(
 ) -> dict[str, dr.DeviceInfo]:
     registry = dr.async_get(hass)
     entity_registry = er.async_get(hass)
+    # The old timestamp state changed for every device sample. Its replacement is
+    # an unrecorded attribute on telemetry status; remove only this entry's exact
+    # known-zone sensor records, including customized or disabled ones.
+    retired = {f"{zone.key}:observed_at" for zone in snapshot.zones.values()}
+    for entity in tuple(er.async_entries_for_config_entry(entity_registry, entry.entry_id)):
+        if (
+            entity.config_entry_id == entry.entry_id
+            and entity.platform == DOMAIN
+            and entity.entity_id.startswith("sensor.")
+            and entity.unique_id in retired
+        ):
+            entity_registry.async_remove(entity.entity_id)
     registered = {}
     for key, device in build_devices(snapshot).items():
         registered[key] = registry.async_get_or_create(

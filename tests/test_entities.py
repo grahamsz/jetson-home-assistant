@@ -231,6 +231,9 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
         await self.sensor.async_setup_entry(None, self.entry, entities.extend)
         self.assertTrue(any(entity._attr_unique_id == "s:z:fan_activity" for entity in entities))
         self.assertTrue(any(entity._attr_unique_id == "s:z:fan_speed" for entity in entities))
+        self.assertFalse(
+            any(entity._attr_unique_id.endswith(":observed_at") for entity in entities)
+        )
         strips = [
             entity for entity in entities if entity._attr_unique_id.endswith(":heat_strips_power")
         ]
@@ -248,6 +251,34 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
         for entity in entities:
             for language in self.catalogs:
                 self.assertTrue(self.label(entity, language=language))
+
+    def test_last_device_reading_is_an_unrecorded_attribute_on_stable_telemetry_state(self):
+        sensor = self.sensor.JetsonZoneTelemetrySensor(self.coordinator, self.zone)
+        self.assertEqual(sensor._attr_unique_id, "s:z:telemetry_status")
+        self.assertEqual(sensor.native_value, "Current")
+        self.assertEqual(
+            sensor.extra_state_attributes, {"last_device_reading": "2026-11-04T07:00:00+00:00"}
+        )
+        self.assertIn("last_device_reading", sensor._unrecorded_attributes)
+        self.zone.status["health"]["observedAt"] = "2026-11-04T07:01:00Z"
+        self.assertEqual(sensor.native_value, "Current")
+        self.assertEqual(
+            sensor.extra_state_attributes["last_device_reading"], "2026-11-04T07:01:00+00:00"
+        )
+        for invalid in ("bad", "2026-11-04T07:00:00", None):
+            self.zone.status["health"]["observedAt"] = invalid
+            self.assertIsNone(sensor.extra_state_attributes["last_device_reading"])
+
+    async def test_timestamp_without_status_stays_visible_without_a_timestamp_entity(self):
+        self.zone.status["health"].pop("telemetryStatus")
+        entities = []
+        await self.sensor.async_setup_entry(None, self.entry, entities.extend)
+        sensor = next(
+            entity for entity in entities if entity._attr_unique_id == "s:z:telemetry_status"
+        )
+        self.assertTrue(sensor.available)
+        self.assertIsNone(sensor.native_value)
+        self.assertIsNotNone(sensor.extra_state_attributes["last_device_reading"])
 
     def test_fan_activity_speed_and_setting_are_independent_entities(self):
         activity = self.sensor.JetsonStatusSensor(self.coordinator, self.zone, "fan_activity")

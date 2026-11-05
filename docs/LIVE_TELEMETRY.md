@@ -11,9 +11,11 @@ Authorized reads on November 3–4, 2026 returned fields absent from the recover
 | `connectivity.connectionStatus` | Zone connection diagnostic binary sensor; fresh value takes priority over cached system health |
 | `connectivity.issues` | issues and issue_count attributes on that connection entity; nonempty item structure remains unknown |
 | `health.telemetryStatus` | Telemetry status diagnostic sensor, preserving the reported string |
-| `health.observedAt` | Last device reading timestamp sensor |
+| `health.observedAt` | `last_device_reading` attribute on Telemetry status; excluded from recorded attributes |
 
-These use the already-polled zone response and add no requests. Connection and freshness diagnostics remain readable when a zone reports disconnected; ordinary controls/readings still respect connectivity. Current was observed for telemetryStatus, but the full enum is not established. An API response timestamp and a real device observation are different facts; the timestamp entity reports observedAt, not the time HA fetched it.
+These use the already-polled zone response and add no requests. Connection and freshness diagnostics remain readable when a zone reports disconnected; ordinary controls/readings still respect connectivity. Current was observed for telemetryStatus, but the full enum is not established. An API response timestamp and a real device observation are different facts; the attribute reports observedAt, not the time HA fetched it.
+
+Version 0.6.1 replaces the standalone Last device reading sensor with the attribute on the existing Telemetry status entity. It uses HA's `_unrecorded_attributes` mechanism, so the timestamp is available in current state/templates but is not retained as a historical attribute. The reported telemetry status remains independent of the timestamp. HA can still emit live attribute updates and Recorder state rows; this change removes timestamp-as-state history and stored timestamp attributes, not every possible database write. The old timestamp entity registry record is removed for known zones in this account, including disabled/custom-named records. Other entities/accounts and existing Recorder history are left intact; history expires under the normal retention policy.
 
 ## Heat-pump operation additions
 

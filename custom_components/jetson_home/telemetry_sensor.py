@@ -1,7 +1,5 @@
 """Zone freshness and observed per-unit operation diagnostics."""
 
-from datetime import datetime
-
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -16,30 +14,29 @@ from .telemetry import SPEED_OPERATION_OPTIONS, operation_speed_state, operation
 
 class JetsonZoneTelemetrySensor(JetsonEntity, SensorEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_translation_key = "telemetry_status"
+    _unrecorded_attributes = frozenset({"last_device_reading"})
 
-    def __init__(self, coordinator, zone, kind: str) -> None:
+    def __init__(self, coordinator, zone) -> None:
         super().__init__(coordinator, zone)
-        self.kind = kind
-        self._attr_unique_id = f"{zone.key}:{kind}"
-        self._attr_translation_key = kind
-        if kind == "observed_at":
-            self._attr_device_class = SensorDeviceClass.TIMESTAMP
+        self._attr_unique_id = f"{zone.key}:telemetry_status"
 
     @property
     def available(self) -> bool:
         return (
             self.coordinator.last_update_success
             and self.zone_key in self.coordinator.data.zones
-            and getattr(self.zone, self.kind) is not None
+            and (self.zone.telemetry_status is not None or self.zone.observed_at is not None)
         )
 
     @property
-    def native_value(self) -> str | datetime | None:
-        return (
-            self.zone.telemetry_status
-            if self.kind == "telemetry_status"
-            else timestamp(self.zone.observed_at)
-        )
+    def native_value(self) -> str | None:
+        return self.zone.telemetry_status
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        observed = timestamp(self.zone.observed_at)
+        return {"last_device_reading": observed.isoformat() if observed else None}
 
 
 class JetsonHeatPumpSensor(JetsonNamedEntity, SensorEntity):

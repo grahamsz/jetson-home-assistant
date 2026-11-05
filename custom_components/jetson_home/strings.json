@@ -185,10 +185,12 @@
         }
       },
       "telemetry_status": {
-        "name": "{zone} telemetry status"
-      },
-      "observed_at": {
-        "name": "{zone} last device reading"
+        "name": "{zone} telemetry status",
+        "state_attributes": {
+          "last_device_reading": {
+            "name": "Last device reading"
+          }
+        }
       },
       "main_power": {
         "name": "Main power",

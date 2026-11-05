@@ -43,10 +43,15 @@ class EntityRegistry:
     def __init__(self):
         self.entities = {}
         self.updates = []
+        self.removed = []
 
     def async_update_entity(self, entity_id, **updates):
         self.entities[entity_id] = replace(self.entities[entity_id], **updates)
         self.updates.append((entity_id, updates))
+
+    def async_remove(self, entity_id):
+        self.entities.pop(entity_id)
+        self.removed.append(entity_id)
 
 
 class DeviceRegistry:
@@ -94,6 +99,9 @@ dr.async_entries_for_parent_device = lambda registry, device_id: registry.childr
 er = types.ModuleType("homeassistant.helpers.entity_registry")
 er.RegistryEntryDisabler = Disabler
 er.async_get = lambda hass: hass.entities
+er.async_entries_for_config_entry = lambda registry, entry_id: [
+    item for item in registry.entities.values() if item.config_entry_id == entry_id
+]
 er.async_entries_for_device = lambda registry, device_id, include_disabled_entities=False: [
     item
     for item in registry.entities.values()
@@ -157,6 +165,39 @@ class DeviceMigrationTests(unittest.TestCase):
         self.assertTrue(all(item.device_id == "root" for item in self.entities.entities.values()))
         self.assertEqual(infos["s1:z1"]["identifiers"], {("jetson_home", "system:s1")})
         self.assertEqual(infos["equipment:s1:em1"], infos["s1:z1"])
+
+    def test_retired_timestamp_sensor_is_removed_without_touching_other_entities(self):
+        self.entities.entities["sensor.my_custom_timestamp"] = EntityRecord(
+            "sensor.my_custom_timestamp",
+            "s1:z1:observed_at",
+            "root",
+            disabled_by=Disabler.USER,
+            name="My timestamp",
+        )
+        for entity_id, unique_id, settings in (
+            ("sensor.temperature", "s1:z1:temperature", {}),
+            ("sensor.telemetry", "s1:z1:telemetry_status", {}),
+            ("sensor.other_account", "s1:z1:observed_at", {"config_entry_id": "other"}),
+            ("sensor.other_integration", "s1:z1:observed_at", {"platform": "other"}),
+            ("sensor.other_zone", "s1:other:observed_at", {}),
+            ("binary_sensor.other_domain", "s1:z1:observed_at", {}),
+        ):
+            self.entities.entities[entity_id] = EntityRecord(
+                entity_id, unique_id, "root", **settings
+            )
+        self.sync()
+        self.assertEqual(self.entities.removed, ["sensor.my_custom_timestamp"])
+        self.assertEqual(len(self.entities.entities), 6)
+        self.sync()
+        self.assertEqual(self.entities.removed, ["sensor.my_custom_timestamp"])
+
+    def test_empty_discovery_does_not_remove_unknown_timestamp_records(self):
+        self.entities.entities["sensor.timestamp"] = EntityRecord(
+            "sensor.timestamp", "s1:z1:observed_at", "root"
+        )
+        self.snapshot.zones.clear()
+        self.sync()
+        self.assertIn("sensor.timestamp", self.entities.entities)
 
     def test_inherited_area_and_disabled_choice_are_preserved(self):
         old = self.legacy(

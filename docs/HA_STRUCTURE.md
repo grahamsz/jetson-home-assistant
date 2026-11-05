@@ -47,7 +47,7 @@ The system device ID is retained when its prior record exists. Migration is idem
 | TVOC | Zone-named sensor | VOC parts / measurement / ppb |
 | Equipment connection | Equipment-named diagnostic | Connectivity binary sensor |
 | Zone connection / issues | Zone-named diagnostic; issues and issue count are attributes | Connectivity binary sensor |
-| Telemetry status / Last device reading | Zone-named diagnostics | Plain text / timestamp |
+| Telemetry status | Zone-named diagnostic with unrecorded `last_device_reading` attribute | Plain text state; timestamp is not a separate entity |
 | Heat-pump operation fields | Equipment-named diagnostics; only reported fields appear | Fan speeds show Off/Low/Medium/High where applicable; other fields retain their reported values |
 | Main / per-load power | System or reported load name | Power / measurement / W |
 | Main / per-load energy today | System or reported load name | Energy / total with explicit local-midnight reset / kWh |
@@ -71,7 +71,7 @@ If access changes from limited to full, pollutant entities can appear automatica
 
 ## Connectivity and configuration updates
 
-Connected maps to on, Disconnected to off, and Unknown to an unknown diagnostic state. Connectivity is the backend's liveness assessment, not a direct local ping. The newer zone-status connection field takes priority over cached system health and is read each measurement cycle. Zone connection diagnostics also expose reported issues. Telemetry status and Last device reading distinguish a successful API request from a recent device sample. Inventory connection checks run on the next poll after five minutes and update only known objects' status; the backend also describes a five-minute equipment staleness window. Configuration changes are applied at startup/reload or through Refresh configuration. See [polling](POLLING.md).
+Connected maps to on, Disconnected to off, and Unknown to an unknown diagnostic state. Connectivity is the backend's liveness assessment, not a direct local ping. The newer zone-status connection field takes priority over cached system health and is read each measurement cycle. Zone connection diagnostics also expose reported issues. Telemetry status and its last-device-reading attribute distinguish a successful API request from a recent device sample. The standalone timestamp sensor is retired in 0.6.1, with cleanup scoped to this account's known zones. Inventory connection checks run on the next poll after five minutes and update only known objects' status; the backend also describes a five-minute equipment staleness window. Configuration changes are applied at startup/reload or through Refresh configuration. See [polling](POLLING.md).
 
 Inventory errors retain last-good optional data and make affected connectivity readings unavailable. Equipment omitted from a successful health read becomes unknown until explicit discovery. Removing equipment from the active configuration makes its existing entities unavailable; the initial consolidation cleanup is distinct from deleting historical entity records.
 
@@ -79,7 +79,7 @@ Inventory errors retain last-good optional data and make affected connectivity r
 
 Version 0.5.0 reads `GET /v1/systems/{systemId}/energy/current` once per system with a discovered EnergyMonitor. The confirmed response supplies Main power and daily energy, plus named load values keyed by reported load identifiers. All sensors share the system device. Null/missing values remain unknown; optional request failures and stale timestamps make the readings unavailable.
 
-Daily energy uses HA's `total` state class with an explicit reset derived from the API's date and IANA timezone. This accommodates within-day corrections; a calendar-day reset was observed live across local midnight. Per-load identities use reported keys rather than guessing from names. The Main total is exposed once; load totals, residuals, and separately exposed heat-strip power are not added to it. Main describes the monitored source, not whole-home consumption. Avoid overlapping readings when configuring equipment/circuit consumption in the Energy dashboard. Recorder/Energy behavior still needs validation in HA. See [energy details](ENERGY.md).
+Daily energy uses HA's `total` state class with an explicit reset derived from the API's date and IANA timezone. This accommodates within-day corrections; a calendar-day reset was observed live across local midnight. Per-load identities use reported keys rather than guessing from names. The Main total is exposed once; load totals, residuals, and separately exposed heat-strip power are not added to it. Main describes the monitored source; equipment versus whole-home coverage depends on clamp placement. Avoid overlapping readings when configuring Energy-dashboard sources. Recorder/Energy behavior still needs validation in HA. See [energy details](ENERGY.md).
 
 The AWS IoT MQTT provisioning schema is specifically for EM-001. It does not establish a readable Emporia Vue 3 stream or subscription. The explicit OCPP WebSocket field belongs to the EV charger; see [transport findings](API.md#realtime-updates-websocket-sse-and-mqtt).
 
