@@ -15,6 +15,8 @@ From 0.4.0, systems are the HA devices and zone/equipment entities share their c
 
 Version 0.6.0's Fan activity/current-speed sensors also use cached zone status. Heat-strip watts share the existing energy response. These additions and localization add no network requests or discovery scans.
 
+Version 0.7.0's Schedule paused sensor, Resume schedule button, and Circulation minutes/hour number likewise use existing zone data. Known zones can gain these entities during normal polling. Resume and circulation-duration writes happen only on explicit user/service actions and request a normal refresh after success. They do not add background reads or automatically resume schedules after manual overrides; see [schedule controls](SCHEDULES.md).
+
 ## Requests by event
 
 | Event | Reads | Applied changes |

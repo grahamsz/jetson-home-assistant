@@ -11,7 +11,14 @@ from .api import JetsonClient, Tokens
 from .const import CONF_INSTALL_ID
 from .coordinator import JetsonCoordinator
 
-PLATFORMS = [Platform.CLIMATE, Platform.SENSOR, Platform.HUMIDIFIER, Platform.BINARY_SENSOR]
+PLATFORMS = [
+    Platform.CLIMATE,
+    Platform.SENSOR,
+    Platform.HUMIDIFIER,
+    Platform.BINARY_SENSOR,
+    Platform.NUMBER,
+    Platform.BUTTON,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

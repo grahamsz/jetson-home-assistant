@@ -214,6 +214,42 @@ class Zone:
         return {"Off": "off", "Circulating": "running"}.get(self.circulation.get("status"))
 
     @property
+    def circulation_minutes(self) -> int | None:
+        settings = mapping(self.circulation.get("settings"))
+        value = number(
+            settings["fanOnDuration"]
+            if "fanOnDuration" in settings
+            else mapping(self.circulation.get("fanOnDurationSetting")).get("value")
+        )
+        return int(value) if value is not None and value.is_integer() and 0 <= value <= 60 else None
+
+    @property
+    def circulation_mode(self) -> str | None:
+        mode = mapping(self.circulation.get("settings")).get("mode")
+        return mode if mode in ("Off", "Circulate", "Continuous") else None
+
+    @property
+    def schedule(self) -> dict[str, Any]:
+        return mapping(self.status.get("schedule"))
+
+    @property
+    def schedule_paused(self) -> bool | None:
+        status = self.schedule.get("status")
+        return status == "Paused" if status in ("Active", "Paused") else None
+
+    @property
+    def schedule_target(self) -> tuple[str, str] | None:
+        schedule_id = optional_text(self.schedule.get("id"))
+        kind = self.schedule.get("kind")
+        if schedule_id is None or not schedule_id.strip() or kind not in ("Weekly", "Vacation"):
+            return None
+        return schedule_id, kind
+
+    @property
+    def can_resume_schedule(self) -> bool:
+        return self.schedule_paused is True and self.schedule_target is not None
+
+    @property
     def air_quality_access(self) -> str | None:
         return mapping(self.air_quality).get("access")
 

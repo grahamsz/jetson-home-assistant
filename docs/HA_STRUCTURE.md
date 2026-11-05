@@ -41,6 +41,9 @@ The system device ID is retained when its prior record exists. Migration is idem
 | Current relative humidity | Zone-named sensor | Humidity / measurement / % |
 | HVAC mode / Fan mode / HVAC activity / Fan activity / Fan speed | Zone-named history sensors | Enum, read-only; see [history](HISTORY.md) |
 | Optional humidifier control | Zone-named control | Enabled only by advertised capability |
+| Schedule paused | Zone-named binary sensor | Paused/Active from a reported schedule, unknown/unavailable if absent or unrecognized |
+| Resume schedule | Zone-named configuration button | Available only for a reported paused Weekly/Vacation schedule |
+| Circulation minutes per hour | Zone-named configuration number | Integer 0–60, step 1, min per hour in timed-circulation mode |
 | Overall air-quality level | Zone-named sensor | Enum: excellent, good, fair, poor, unhealthy |
 | CO₂ | Zone-named sensor | CO₂ / measurement / ppm |
 | PM2.5 | Zone-named sensor | PM2.5 / measurement / μg/m³ |

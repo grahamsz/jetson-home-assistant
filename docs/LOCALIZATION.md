@@ -1,6 +1,6 @@
 # English, Spanish, and French
 
-Version 0.6.0 ships complete `en`, `es`, and `fr` catalogs. French uses Canadian terminology such as courriel and thermopompe. The catalogs translate setup and reauthentication, options and refresh messages, default entity names, known enum states, attribute labels, and control-validation errors. User-supplied system, zone, load, and equipment names remain as configured in Jetson.
+The integration ships complete `en`, `es`, and `fr` catalogs, including 0.7.0's schedule-paused status, resume button, and circulation-minutes control. French uses Canadian terminology such as courriel and thermopompe. The catalogs translate setup and reauthentication, options and refresh messages, default entity names, known enum states, attribute labels, and control-validation errors. User-supplied system, zone, load, and equipment names remain as configured in Jetson.
 
 Fan mode keeps raw states `auto`, `1`, `2`, `3` for existing automations and sends the same API command values. The displayed labels are:
 

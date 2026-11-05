@@ -67,7 +67,18 @@ class JetsonCoordinator(DataUpdateCoordinator[Snapshot]):
             if not self.last_update_success or current is None or not current.online:
                 raise user_error("zone_unavailable")
             try:
-                await getattr(self.client, method)(zone.zone_id, value)
+                if method == "resume_schedule":
+                    # Resolve the current target inside the shared command lock.
+                    # Never resume a schedule ID captured when the button was created.
+                    if not current.can_resume_schedule:
+                        raise user_error("schedule_unavailable")
+                    await self.client.resume_schedule(*current.schedule_target)
+                elif method == "set_circulation_duration":
+                    if current.circulation_minutes is None:
+                        raise user_error("circulation_unavailable")
+                    await self.client.set_circulation_duration(current.zone_id, value)
+                else:
+                    await getattr(self.client, method)(current.zone_id, value)
             except JetsonAuthError as err:
                 self.config_entry.async_start_reauth(self.hass)
                 raise user_error("reauth_required") from err

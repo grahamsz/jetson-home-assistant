@@ -301,6 +301,53 @@
       },
       "equipment_connection": {
         "name": "Connexion de {equipment}"
+      },
+      "schedule_paused": {
+        "name": "Programme en pause de {zone}",
+        "state": {
+          "on": "En pause",
+          "off": "Actif"
+        },
+        "state_attributes": {
+          "schedule_id": {
+            "name": "Identifiant du programme"
+          },
+          "schedule_kind": {
+            "name": "Type de programme",
+            "state": {
+              "weekly": "Hebdomadaire",
+              "vacation": "Vacances"
+            }
+          }
+        }
+      }
+    },
+    "button": {
+      "resume_schedule": {
+        "name": "Reprendre le programme de {zone}"
+      }
+    },
+    "number": {
+      "circulation_minutes": {
+        "name": "{zone}: minutes de circulation par heure",
+        "state_attributes": {
+          "circulation_mode": {
+            "name": "Mode de circulation",
+            "state": {
+              "off": "Arrêt",
+              "circulate": "Circulation minutée",
+              "continuous": "Continu"
+            }
+          },
+          "applies_in_mode": {
+            "name": "S’applique au mode",
+            "state": {
+              "off": "Arrêt",
+              "circulate": "Circulation minutée",
+              "continuous": "Continu"
+            }
+          }
+        }
       }
     },
     "climate": {
@@ -338,6 +385,15 @@
     }
   },
   "exceptions": {
+    "circulation_out_of_range": {
+      "message": "Saisissez un nombre entier de 0 à 60 minutes par heure."
+    },
+    "circulation_unavailable": {
+      "message": "La durée de circulation n’est pas disponible pour cette zone."
+    },
+    "schedule_unavailable": {
+      "message": "Cette zone n’a pas de programme en pause signalé pouvant être repris."
+    },
     "unsupported_hvac_mode": {
       "message": "Mode de climatisation Jetson non pris en charge."
     },

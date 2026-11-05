@@ -96,6 +96,12 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
             return web.json_response(self.energy)
         if path == "/v1/equipment/hp1/heatpump/status":
             return web.json_response(self.heatpump_status)
+        if path.endswith("/circulation/settings"):
+            settings = dict(self.status["features"]["circulation"]["settings"])
+            settings.update(body)
+            return web.json_response(settings)
+        if path.startswith("/v1/schedules/") and path.endswith("/resume"):
+            return web.json_response({"success": True})
         if path.endswith("/humidity/settings"):
             return web.json_response(
                 {"mode": body.get("mode", "Off"), "setpoint": body.get("setpoint", {"value": 40})}
@@ -126,6 +132,72 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
 
         self.behavior = behavior
         self.assertEqual(await self.client.get_zones(), {})
+
+    async def test_circulation_duration_sends_only_the_selected_minutes(self):
+        await self.client.set_circulation_duration("z1", 30.0)
+        self.assertEqual(
+            self.calls[-1][:3],
+            ("PATCH", "/v1/zones/z1/circulation/settings", {"fanOnDuration": 30}),
+        )
+        self.assertEqual(len(self.calls), 1)
+        await self.client.set_circulation_duration("z1", 0)
+        self.assertEqual(self.calls[-1][2], {"fanOnDuration": 0})
+
+    async def test_invalid_duration_never_sends_a_request(self):
+        for invalid in (True, False, None, "15", -1, 61, 1.5, float("nan"), float("inf")):
+            with self.assertRaises(ValueError):
+                await self.client.set_circulation_duration("z1", invalid)
+        self.assertFalse(self.calls)
+
+    async def test_duration_response_must_confirm_the_requested_settings(self):
+        for response in (
+            {"result": "ok"},
+            {"result": "unreachable"},
+            {"mode": "Circulate", "fanSpeed": "Auto", "fanOnDuration": 15},
+            {"mode": "Future", "fanSpeed": "Auto", "fanOnDuration": 30},
+            {"mode": "Circulate", "fanSpeed": True, "fanOnDuration": 30},
+        ):
+
+            async def behavior(request, body, response=response):
+                return web.json_response(response)
+
+            self.behavior = behavior
+            count = len(self.calls)
+            with self.assertRaises(api.JetsonError):
+                await self.client.set_circulation_duration("z1", 30)
+            self.assertEqual(len(self.calls), count + 1)
+
+    async def test_resume_uses_reported_kind_and_encodes_schedule_id(self):
+        for kind in ("Weekly", "Vacation"):
+            await self.client.resume_schedule("schedule/a b?", kind)
+            self.assertEqual(
+                self.calls[-1][:3],
+                ("POST", "/v1/schedules/schedule%2Fa%20b%3F/resume", {"kind": kind}),
+            )
+
+    async def test_resume_requires_explicit_supported_kind_and_nonempty_id(self):
+        for schedule_id, kind in (
+            ("", "Weekly"),
+            ("  ", "Weekly"),
+            (None, "Weekly"),
+            ("schedule", None),
+            ("schedule", "Future"),
+        ):
+            with self.assertRaises(ValueError):
+                await self.client.resume_schedule(schedule_id, kind)
+        self.assertFalse(self.calls)
+
+    async def test_resume_requires_boolean_success_and_does_not_replay_failure(self):
+        for response in ({"success": False}, {"success": 1}, {"result": "ok"}, {}):
+
+            async def behavior(request, body, response=response):
+                return web.json_response(response)
+
+            self.behavior = behavior
+            count = len(self.calls)
+            with self.assertRaises(api.JetsonError):
+                await self.client.resume_schedule("schedule", "Weekly")
+            self.assertEqual(len(self.calls), count + 1)
 
     async def test_authentication_wire_format(self):
         await self.client.request_magic_link("test@example.invalid")

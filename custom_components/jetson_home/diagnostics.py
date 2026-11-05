@@ -10,7 +10,7 @@ from .polling import CONNECTIVITY_INTERVAL
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     coordinator = entry.runtime_data
     return {
-        "integration_version": "0.6.1",
+        "integration_version": "0.7.0",
         "device_grouping": "one_per_system",
         "last_update_success": coordinator.last_update_success,
         "scan_interval_seconds": coordinator.update_interval.total_seconds(),
@@ -23,6 +23,11 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
                 "connection_status": zone.effective_connection_status,
                 "system_connection_status": zone.connection_status,
                 "telemetry_status": zone.telemetry_status,
+                "schedule_present": bool(zone.schedule),
+                "schedule_kind": optional_text(zone.schedule.get("kind")),
+                "schedule_status": optional_text(zone.schedule.get("status")),
+                "circulation_minutes_per_hour": zone.circulation_minutes,
+                "circulation_mode": zone.circulation_mode,
                 "telemetry_observed_at": zone.observed_at,
                 "connectivity_issue_count": len(zone.connectivity_issues)
                 if zone.connectivity_issues is not None

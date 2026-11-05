@@ -301,6 +301,53 @@
       },
       "equipment_connection": {
         "name": "{equipment}: conexión"
+      },
+      "schedule_paused": {
+        "name": "{zone}: programa en pausa",
+        "state": {
+          "on": "En pausa",
+          "off": "Activo"
+        },
+        "state_attributes": {
+          "schedule_id": {
+            "name": "ID del programa"
+          },
+          "schedule_kind": {
+            "name": "Tipo de programa",
+            "state": {
+              "weekly": "Semanal",
+              "vacation": "Vacaciones"
+            }
+          }
+        }
+      }
+    },
+    "button": {
+      "resume_schedule": {
+        "name": "Reanudar el programa de {zone}"
+      }
+    },
+    "number": {
+      "circulation_minutes": {
+        "name": "{zone}: minutos de circulación por hora",
+        "state_attributes": {
+          "circulation_mode": {
+            "name": "Modo de circulación",
+            "state": {
+              "off": "Apagado",
+              "circulate": "Circulación temporizada",
+              "continuous": "Continuo"
+            }
+          },
+          "applies_in_mode": {
+            "name": "Se aplica en el modo",
+            "state": {
+              "off": "Apagado",
+              "circulate": "Circulación temporizada",
+              "continuous": "Continuo"
+            }
+          }
+        }
       }
     },
     "climate": {
@@ -338,6 +385,15 @@
     }
   },
   "exceptions": {
+    "circulation_out_of_range": {
+      "message": "Introduce un número entero de 0 a 60 minutos por hora."
+    },
+    "circulation_unavailable": {
+      "message": "La duración de circulación no está disponible para esta zona."
+    },
+    "schedule_unavailable": {
+      "message": "Esta zona no tiene un programa en pausa informado que se pueda reanudar."
+    },
     "unsupported_hvac_mode": {
       "message": "Modo de climatización de Jetson no compatible."
     },

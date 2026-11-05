@@ -21,9 +21,14 @@ async def async_setup_entry(
     def discover() -> None:
         entities = []
         for key, zone in coordinator.data.zones.items():
-            if key not in known and "connectionStatus" in mapping(zone.status.get("connectivity")):
-                known.add(key)
+            if (key, "connection") not in known and "connectionStatus" in mapping(
+                zone.status.get("connectivity")
+            ):
+                known.add((key, "connection"))
                 entities.append(JetsonZoneConnectivity(coordinator, zone))
+            if (key, "schedule") not in known and isinstance(zone.status.get("schedule"), dict):
+                known.add((key, "schedule"))
+                entities.append(JetsonSchedulePaused(coordinator, zone))
         for system in coordinator.data.systems.values():
             for item in system.equipment:
                 key = equipment_identifier(system.system_id, item["id"])
@@ -38,6 +43,31 @@ async def async_setup_entry(
 
     discover()
     entry.async_on_unload(coordinator.async_add_listener(discover))
+
+
+class JetsonSchedulePaused(JetsonEntity, BinarySensorEntity):
+    _attr_translation_key = "schedule_paused"
+    _attr_icon = "mdi:calendar-pause"
+
+    def __init__(self, coordinator, zone) -> None:
+        super().__init__(coordinator, zone)
+        self._attr_unique_id = f"{zone.key}:schedule_paused"
+
+    @property
+    def available(self) -> bool:
+        return super().available and bool(self.zone.schedule)
+
+    @property
+    def is_on(self) -> bool | None:
+        return self.zone.schedule_paused
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        kind = optional_text(self.zone.schedule.get("kind"))
+        return {
+            "schedule_id": optional_text(self.zone.schedule.get("id")),
+            "schedule_kind": kind.lower() if kind else None,
+        }
 
 
 class JetsonZoneConnectivity(JetsonEntity, BinarySensorEntity):

@@ -260,6 +260,8 @@ At least one setting is required. The response schema is the full `CirculationSe
 
 `Off` disables circulation; `Circulate` uses the configured minutes/hour; `Continuous` requests always-on circulation. These are separate from HVAC `FanOnly` and from airflow while heating/cooling. The app's older `SetCirculationSettingsRequest` uses `enabled`, `fanSpeedSetting`, and `fanOnDurationSetting`; the observed newer PATCH body uses the fields in the table above.
 
+From integration 0.7.0, a Circulation minutes per hour number exposes the integer 0–60 setting. It PATCHes only `fanOnDuration`, validates the returned settings, and refreshes status. It does not send mode or fan-speed changes. See [the HA controls](SCHEDULES.md).
+
 Jetson's public [heat-pump support page](https://jetsonhome.com/us/support/how-heat-pumps-work) says fixed speeds are preferences that may be temporarily adjusted during heating/cooling and that FanOnly requires a fixed speed. Exact command interactions remain a hardware-validation item.
 
 ## Humidity
@@ -283,6 +285,8 @@ Either `mode` or `setpoint` can be updated independently; at least one setting i
 These routes are documented but are not implemented by the prototype's entities.
 
 Schedule collection: `GET` / `POST /v1/systems/{systemId}/schedules`. Individual schedules use `PATCH` / `DELETE /v1/schedules/{scheduleId}`. Pause/resume use `POST /v1/schedules/{scheduleId}/pause` or `/resume` with `{"kind":"Weekly"}` or `{"kind":"Vacation"}`; omitted kind defaults to Weekly in the schema.
+
+The recovered resume response is `{"success":true}` (boolean), rather than the HVAC command's `{"result":"ok"}`. The HA Resume schedule button in 0.7.0 uses the currently reported ID and explicit kind only when paused, then refreshes zone status. Its paired Schedule paused binary sensor reads the status response; weekly program editing and automatic resume are not implemented.
 
 Create-schedule body:
 

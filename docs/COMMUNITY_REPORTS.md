@@ -17,14 +17,14 @@ The user supplied a comment from a person running a local bridge against Jetson'
 
 These command paths/bodies, circulation limits, schedule fields, and resume kind are consistent with recovered app evidence. The report adds practical hardware experience rather than introducing new endpoint names. The header observation supports that it was optional in that bridge's context; it does not establish a permanent or universal backend rule. The integration retains its generated installation ID. Main remains a neutral label because measurement coverage depends on clamp placement and wiring.
 
-## Suggested HA model
+## HA model implemented in 0.7.0
 
-A small set of controls would fit HA's existing entity types:
+A small set of controls uses HA's existing entity types:
 
 - A **Schedule paused** binary sensor that reads the current zone's reported schedule status. Missing/unknown schedule data must stay unavailable or unknown, rather than implying Active.
 - A **Resume schedule** button that uses the currently reported schedule ID and kind, then refreshes zone status. It should not assume every zone has a Weekly schedule or automatically undo a deliberate manual override.
 - A **Circulation minutes per hour** number entity, using the recovered integer range 0–60. The commenter's 15-minute increments are a preference, not a demonstrated API restriction. Its effect depends on the separately configured circulation mode; setting minutes alone must not silently change that mode.
 
-These are design proposals, not implemented entities in 0.6.1. The existing integration implements HVAC/fan commands; schedule resume and circulation-duration controls are documented for future work. No new commands were sent to the user's hardware while incorporating this report.
+These entities were proposals in 0.6.1 and are implemented in 0.7.0; see [schedule and circulation behavior](SCHEDULES.md). The existing integration also implements HVAC/fan commands. No new commands were sent to the user's hardware while incorporating this report or building the controls.
 
 For editing weekly programs, keep Jetson's native schedule editor initially. HA's [Schedule helper](https://www.home-assistant.io/integrations/schedule/) edits local weekly time blocks and can trigger automations, but does not synchronize or edit a vendor's schedules by itself. A separate HA-managed program could issue Jetson controls, subject to the reported pause behavior. A native Jetson editor would additionally need to model shared presets/zones, vacation precedence, timezone/DST behavior, and pause/resume semantics; those need more evidence before attempting two-way synchronization.

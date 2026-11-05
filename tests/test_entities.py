@@ -71,7 +71,7 @@ def adapters():
         "homeassistant.exceptions": {"HomeAssistantError": LocalizedError},
         "homeassistant.helpers.device_registry": {"DeviceInfo": dict},
         "homeassistant.helpers.entity": {
-            "EntityCategory": SimpleNamespace(DIAGNOSTIC="diagnostic")
+            "EntityCategory": SimpleNamespace(DIAGNOSTIC="diagnostic", CONFIG="config")
         },
         "homeassistant.helpers.entity_platform": {"AddEntitiesCallback": object},
         "homeassistant.helpers.update_coordinator": {"CoordinatorEntity": CoordinatorAdapter},
@@ -98,6 +98,11 @@ def adapters():
         "homeassistant.components.binary_sensor": {
             "BinarySensorEntity": EntityAdapter,
             "BinarySensorDeviceClass": SimpleNamespace(CONNECTIVITY="connectivity"),
+        },
+        "homeassistant.components.button": {"ButtonEntity": EntityAdapter},
+        "homeassistant.components.number": {
+            "NumberEntity": EntityAdapter,
+            "NumberMode": SimpleNamespace(BOX="box"),
         },
         "homeassistant.components.climate": {
             "ClimateEntity": EntityAdapter,
@@ -127,6 +132,7 @@ def adapters():
             "UnitOfEnergy": SimpleNamespace(KILO_WATT_HOUR="kWh"),
             "UnitOfDensity": SimpleNamespace(MICROGRAMS_PER_CUBIC_METER="µg/m³"),
             "UnitOfRatio": SimpleNamespace(PARTS_PER_MILLION="ppm", PARTS_PER_BILLION="ppb"),
+            "UnitOfTime": SimpleNamespace(MINUTES="min"),
         },
         "homeassistant.util": {"dt": SimpleNamespace(utcnow=lambda: datetime.now(UTC))},
         "jetson_entity_contract.coordinator": {"JetsonCoordinator": object},
@@ -149,6 +155,8 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
         self.binary = importlib.import_module("jetson_entity_contract.binary_sensor")
         self.climate = importlib.import_module("jetson_entity_contract.climate")
         self.humidifier = importlib.import_module("jetson_entity_contract.humidifier")
+        self.button = importlib.import_module("jetson_entity_contract.button")
+        self.number = importlib.import_module("jetson_entity_contract.number")
         self.zone = models.Zone("s", "Home", "z", "Main", sample_status())
         self.zone.status.update(
             connectivity={"connectionStatus": "Connected", "issues": []},
@@ -324,6 +332,81 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.label(humidifier, "humidifier", "fr"), "Humidificateur de Main")
         connection = self.binary.JetsonZoneConnectivity(self.coordinator, self.zone)
         self.assertTrue(self.label(connection, "binary_sensor", "es"))
+
+    async def test_schedule_entities_follow_reported_state_without_automatic_resume(self):
+        self.zone.status["schedule"] = {"id": "weekly-1", "kind": "Weekly", "status": "Active"}
+        paused = self.binary.JetsonSchedulePaused(self.coordinator, self.zone)
+        button = self.button.JetsonResumeSchedule(self.coordinator, self.zone)
+        self.assertTrue(paused.available)
+        self.assertFalse(paused.is_on)
+        self.assertFalse(button.available)
+        self.zone.schedule["status"] = "Paused"
+        self.assertTrue(paused.is_on)
+        self.assertTrue(button.available)
+        self.assertEqual(
+            paused.extra_state_attributes, {"schedule_id": "weekly-1", "schedule_kind": "weekly"}
+        )
+        self.assertFalse(self.commands)
+        await button.async_press()
+        self.assertEqual(self.commands, [("resume_schedule", self.zone, None)])
+        self.zone.status.pop("schedule")
+        self.assertFalse(paused.available)
+        self.assertIsNone(paused.is_on)
+        self.assertFalse(button.available)
+        for language in self.catalogs:
+            self.assertTrue(self.label(button, "button", language))
+            self.assertTrue(self.label(paused, "binary_sensor", language))
+
+    async def test_schedule_controls_appear_when_status_later_reports_a_schedule(self):
+        entities = []
+        await self.binary.async_setup_entry(None, self.entry, entities.extend)
+        await self.button.async_setup_entry(None, self.entry, entities.extend)
+        self.assertFalse(
+            any(item._attr_unique_id.endswith(":resume_schedule") for item in entities)
+        )
+        self.zone.status["schedule"] = {"id": "weekly-1", "kind": "Weekly", "status": "Paused"}
+        for callback in self.listeners:
+            callback()
+        self.assertEqual(
+            sum(item._attr_unique_id.endswith(":schedule_paused") for item in entities), 1
+        )
+        self.assertEqual(
+            sum(item._attr_unique_id.endswith(":resume_schedule") for item in entities), 1
+        )
+        for callback in self.listeners:
+            callback()
+        self.assertEqual(
+            sum(item._attr_unique_id.endswith(":resume_schedule") for item in entities), 1
+        )
+
+    async def test_number_allows_minutes_without_changing_its_cached_reading_optimistically(self):
+        number = self.number.JetsonCirculationMinutes(self.coordinator, self.zone)
+        self.assertEqual(number.native_value, 0)
+        self.assertTrue(number.available)
+        self.assertEqual(
+            number.extra_state_attributes,
+            {"circulation_mode": "off", "applies_in_mode": "circulate"},
+        )
+        self.assertEqual(
+            (
+                number._attr_native_min_value,
+                number._attr_native_max_value,
+                number._attr_native_step,
+            ),
+            (0, 60, 1),
+        )
+        await number.async_set_native_value(30)
+        self.assertEqual(self.commands, [("set_circulation_duration", self.zone, 30)])
+        self.assertEqual(number.native_value, 0)
+        for value in (True, None, -1, 61, 1.5, "15"):
+            with self.assertRaises(LocalizedError):
+                await number.async_set_native_value(value)
+        self.assertEqual(len(self.commands), 1)
+        self.zone.circulation["settings"]["fanOnDuration"] = None
+        self.assertIsNone(number.native_value)
+        self.assertFalse(number.available)
+        for language in self.catalogs:
+            self.assertTrue(self.label(number, "number", language))
 
 
 if __name__ == "__main__":

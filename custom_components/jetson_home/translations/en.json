@@ -301,6 +301,53 @@
       },
       "equipment_connection": {
         "name": "{equipment} connection"
+      },
+      "schedule_paused": {
+        "name": "{zone} schedule paused",
+        "state": {
+          "on": "Paused",
+          "off": "Active"
+        },
+        "state_attributes": {
+          "schedule_id": {
+            "name": "Schedule ID"
+          },
+          "schedule_kind": {
+            "name": "Schedule type",
+            "state": {
+              "weekly": "Weekly",
+              "vacation": "Vacation"
+            }
+          }
+        }
+      }
+    },
+    "button": {
+      "resume_schedule": {
+        "name": "{zone} resume schedule"
+      }
+    },
+    "number": {
+      "circulation_minutes": {
+        "name": "{zone} circulation minutes per hour",
+        "state_attributes": {
+          "circulation_mode": {
+            "name": "Circulation mode",
+            "state": {
+              "off": "Off",
+              "circulate": "Timed circulation",
+              "continuous": "Continuous"
+            }
+          },
+          "applies_in_mode": {
+            "name": "Applies in mode",
+            "state": {
+              "off": "Off",
+              "circulate": "Timed circulation",
+              "continuous": "Continuous"
+            }
+          }
+        }
       }
     },
     "climate": {
@@ -338,6 +385,15 @@
     }
   },
   "exceptions": {
+    "circulation_out_of_range": {
+      "message": "Enter a whole number from 0 to 60 minutes per hour."
+    },
+    "circulation_unavailable": {
+      "message": "Circulation duration is unavailable for this zone."
+    },
+    "schedule_unavailable": {
+      "message": "This zone has no reported paused schedule that can be resumed."
+    },
     "unsupported_hvac_mode": {
       "message": "Unsupported Jetson HVAC mode."
     },

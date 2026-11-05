@@ -462,6 +462,37 @@ class JetsonClient:
             {"fanSpeed": speed},
         )
 
+    async def set_circulation_duration(self, zone_id: str, minutes: float) -> None:
+        value = number(minutes)
+        if value is None or not value.is_integer() or not 0 <= value <= 60:
+            raise ValueError("Circulation duration must be a whole number from 0 to 60")
+        duration = int(value)
+        response = await self.request(
+            "PATCH",
+            f"/v1/zones/{quote(zone_id, safe='')}/circulation/settings",
+            {"fanOnDuration": duration},
+        )
+        if response.get("result") == "unreachable":
+            self._confirm_control(response)
+        speed = response.get("fanSpeed")
+        if (
+            response.get("mode") not in ("Off", "Circulate", "Continuous")
+            or (speed != "Auto" and number(speed) not in (1, 2, 3))
+            or number(response.get("fanOnDuration")) != duration
+        ):
+            raise JetsonError("Jetson did not return confirmed circulation settings")
+
+    async def resume_schedule(self, schedule_id: str, kind: str) -> None:
+        if not isinstance(schedule_id, str) or not schedule_id.strip():
+            raise ValueError("A reported schedule ID is required")
+        if kind not in ("Weekly", "Vacation"):
+            raise ValueError("Unsupported schedule kind")
+        response = await self.request(
+            "POST", f"/v1/schedules/{quote(schedule_id, safe='')}/resume", {"kind": kind}
+        )
+        if response.get("success") is not True:
+            raise JetsonError("Jetson did not confirm schedule resume")
+
     async def set_humidity_settings(self, zone_id: str, settings: dict) -> None:
         if not settings or set(settings) - {"mode", "setpoint"}:
             raise ValueError("Invalid humidity settings")
