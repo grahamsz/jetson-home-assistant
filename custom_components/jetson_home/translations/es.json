@@ -10,7 +10,7 @@
       },
       "magic_link": {
         "title": "Verifica tu inicio de sesión",
-        "description": "Jetson envió un enlace a {email}. Cópialo del correo sin abrirlo y pégalo aquí. También puedes pegar solo el parámetro token. Los enlaces pueden caducar o ser de un solo uso. Esta integración es experimental y requiere la nube de Jetson.",
+        "description": "Jetson envió un enlace a {email}. Cópialo del correo sin abrirlo y pégalo aquí. También puedes pegar solo el parámetro token. Los enlaces pueden caducar o ser de un solo uso. Esta integración requiere la nube de Jetson.",
         "data": {
           "magic_link": "Enlace o token de inicio de sesión"
         }
@@ -69,10 +69,10 @@
         "name": "{zone}: temperatura"
       },
       "humidity": {
-        "name": "{zone}: humedad"
+        "name": "Humedad relativa de {zone}"
       },
       "hvac_mode": {
-        "name": "{zone}: modo de climatización",
+        "name": "Modo de funcionamiento de {zone}",
         "state": {
           "off": "Apagado",
           "heat": "Calefacción",
@@ -82,7 +82,7 @@
         }
       },
       "fan_mode": {
-        "name": "{zone}: modo del ventilador",
+        "name": "Velocidad configurada del ventilador de {zone}",
         "state": {
           "auto": "Automático",
           "1": "Baja",
@@ -91,7 +91,7 @@
         }
       },
       "hvac_activity": {
-        "name": "{zone}: actividad de climatización",
+        "name": "Actividad de calefacción/refrigeración de {zone}",
         "state": {
           "off": "Apagado",
           "idle": "En espera",
@@ -102,14 +102,14 @@
         }
       },
       "fan_activity": {
-        "name": "{zone}: actividad del ventilador",
+        "name": "Ventilador de {zone} en marcha",
         "state": {
           "off": "Apagado",
           "running": "En marcha"
         }
       },
       "fan_speed": {
-        "name": "{zone}: velocidad del ventilador",
+        "name": "Velocidad actual del ventilador de {zone}",
         "state": {
           "0": "Apagado",
           "1": "Baja",
@@ -237,7 +237,7 @@
         }
       },
       "heat_strips_power": {
-        "name": "{load}: potencia de las resistencias eléctricas",
+        "name": "Potencia de calefacción auxiliar de {load}",
         "state_attributes": {
           "source_updated_at": {
             "name": "Actualización de la fuente"
@@ -322,7 +322,7 @@
         }
       },
       "humidifying": {
-        "name": "Actividad del humidificador de {zone}"
+        "name": "Humidificación de {zone} en marcha"
       }
     },
     "button": {
@@ -355,7 +355,7 @@
     },
     "climate": {
       "thermostat": {
-        "name": "{zone}",
+        "name": "Termostato de {zone}",
         "state_attributes": {
           "fan_mode": {
             "name": "Modo del ventilador",
@@ -388,7 +388,7 @@
     },
     "switch": {
       "humidifier_enabled": {
-        "name": "Humidificador de {zone} habilitado"
+        "name": "Humidificación de {zone} habilitada"
       }
     }
   },

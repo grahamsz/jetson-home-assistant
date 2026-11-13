@@ -1,5 +1,5 @@
 {
-  "name": "Jetson Home (experimental)",
+  "name": "Jetson Home",
   "render_readme": true,
   "homeassistant": "2026.10.0"
 }

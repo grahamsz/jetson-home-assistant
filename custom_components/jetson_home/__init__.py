@@ -1,4 +1,4 @@
-"""Experimental Jetson Home cloud integration."""
+"""Jetson Home cloud integration."""
 
 from uuid import uuid4
 

@@ -2,7 +2,7 @@
 
 ![Jetson Home](custom_components/jetson_home/brand/icon.png)
 
-Experimental custom integration built by reverse engineering the user-supplied Jetson Home Android app **1.2.8**. It uses the Jetson cloud API. Live authentication and empty-account discovery have been validated, and the user has shown the earlier device layout loaded in HA with reported equipment. The new consolidated layout, displayed readings, and physical controls still need live validation.
+Custom integration built by reverse engineering the user-supplied Jetson Home Android app **1.2.8**. It uses the Jetson cloud API. Live authentication and empty-account discovery have been validated, and the user has shown the earlier device layout loaded in HA with reported equipment. The new consolidated layout, displayed readings, and physical controls still need live validation.
 
 ## What is included
 
@@ -21,7 +21,9 @@ Experimental custom integration built by reverse engineering the user-supplied J
 - [Live energy API and HA mapping](docs/ENERGY.md), [new status fields and pressure findings](docs/LIVE_TELEMETRY.md), a [live OpenAPI supplement](docs/live-openapi.json), and [community hardware reports / schedule design](docs/COMMUNITY_REPORTS.md).
 - [Separate AQ current and history endpoints](docs/AIR_QUALITY_API.md), including required history parameters, response fields, and live-search limits. These bring the combined API inventory to 47 distinct operations; integration polling is unchanged.
 
-**Status (prototype 0.8.0):** 157 protocol/model/polling/migration/telemetry tests pass, using a local HTTP mock server and in-memory registry adapters. Authorized live reads established populated inventory, zone and heat-pump status, full air-quality access, and the current energy route on November 3–4, 2026. A calendar-day energy reset was observed across local midnight. On November 13, a commissioned humidifier advertised active humidification and a 20–50% target range in 5-point increments. Earlier auth/empty-account responses matched recovered schemas. HA entity loading, consolidation, Recorder/Energy statistics, and physical controls still need runtime checks. See [validation scope](docs/VALIDATION.md).
+**Status (0.9.0):** 157 protocol/model/polling/migration/telemetry tests pass, using a local HTTP mock server and in-memory registry adapters. Authorized live reads established populated inventory, zone and heat-pump status, full air-quality access, and the current energy route on November 3–4, 2026. A calendar-day energy reset was observed across local midnight. On November 13, a commissioned humidifier advertised active humidification and a 20–50% target range in 5-point increments. Earlier auth/empty-account responses matched recovered schemas. HA entity loading, consolidation, Recorder/Energy statistics, and physical controls still need runtime checks. See [validation scope](docs/VALIDATION.md).
+
+Version 0.9.0 clarifies thermostat, fan setting versus actual speed, humidification enable versus activity, and auxiliary heat labels in English, Spanish, and French. Zone/load names, unique IDs, state values, and generic Main power/energy labels are unchanged. Custom HA names remain yours. The HACS listing is now **Jetson Home**.
 
 Version 0.8.0 adds Humidifier activity for runtime history and an explicit Humidifier enabled switch for seasonal disable. Installed-but-disabled humidifiers retain their controls and target; zones without advertised humidifier support create none of these entities. Unknown relay-humidifier connection diagnostics are omitted and existing records cleaned up. See [daily runtime helper and humidity behavior](docs/HUMIDITY.md#hours-of-humidification-per-day).
 
@@ -37,7 +39,7 @@ Version 0.2.1 bundles Jetson's official app icon and website wordmark, with norm
 
 ## Install with HACS
 
-The prototype targets **Home Assistant 2026.10 or later**. In HACS, open the three-dot menu and choose **Custom repositories**. Add `https://github.com/grahamsz/jetson-home-assistant` with type **Integration**, then download **Jetson Home (experimental)** and restart Home Assistant. New GitHub releases can be installed through HACS. See [HACS's custom-repository instructions](https://hacs.dev/docs/faq/custom_repositories/).
+The integration targets **Home Assistant 2026.10 or later**. In HACS, open the three-dot menu and choose **Custom repositories**. Add `https://github.com/grahamsz/jetson-home-assistant` with type **Integration**, then download **Jetson Home** and restart Home Assistant. New GitHub releases can be installed through HACS. See [HACS's custom-repository instructions](https://hacs.dev/docs/faq/custom_repositories/).
 
 For a manual install, copy `custom_components/jetson_home` into your Home Assistant configuration directory, producing `/config/custom_components/jetson_home/manifest.json`, then restart Home Assistant. The full project ZIP includes documentation and tests; the integration folder is the part installed in HA.
 

@@ -10,7 +10,7 @@
       },
       "magic_link": {
         "title": "Verify your sign-in",
-        "description": "Jetson sent a link to {email}. Copy the sign-in link from the email without opening it, then paste it here. You can also paste only its token parameter. Links may expire or be single use. This integration is experimental and requires Jetson's cloud.",
+        "description": "Jetson sent a link to {email}. Copy the sign-in link from the email without opening it, then paste it here. You can also paste only its token parameter. Links may expire or be single use. This integration requires Jetson's cloud.",
         "data": {
           "magic_link": "Sign-in link or token"
         }
@@ -69,10 +69,10 @@
         "name": "{zone} temperature"
       },
       "humidity": {
-        "name": "{zone} humidity"
+        "name": "{zone} relative humidity"
       },
       "hvac_mode": {
-        "name": "{zone} HVAC mode",
+        "name": "{zone} operating mode",
         "state": {
           "off": "Off",
           "heat": "Heat",
@@ -82,7 +82,7 @@
         }
       },
       "fan_mode": {
-        "name": "{zone} fan mode",
+        "name": "{zone} fan speed setting",
         "state": {
           "auto": "Auto",
           "1": "Low",
@@ -91,7 +91,7 @@
         }
       },
       "hvac_activity": {
-        "name": "{zone} HVAC activity",
+        "name": "{zone} heating/cooling activity",
         "state": {
           "off": "Off",
           "idle": "Idle",
@@ -102,14 +102,14 @@
         }
       },
       "fan_activity": {
-        "name": "{zone} fan activity",
+        "name": "{zone} fan running",
         "state": {
           "off": "Off",
           "running": "Running"
         }
       },
       "fan_speed": {
-        "name": "{zone} fan speed",
+        "name": "{zone} actual fan speed",
         "state": {
           "0": "Off",
           "1": "Low",
@@ -237,7 +237,7 @@
         }
       },
       "heat_strips_power": {
-        "name": "{load} heat strips power",
+        "name": "{load} auxiliary heat power",
         "state_attributes": {
           "source_updated_at": {
             "name": "Source updated at"
@@ -322,7 +322,7 @@
         }
       },
       "humidifying": {
-        "name": "{zone} humidifier activity"
+        "name": "{zone} humidifying"
       }
     },
     "button": {
@@ -355,7 +355,7 @@
     },
     "climate": {
       "thermostat": {
-        "name": "{zone}",
+        "name": "{zone} thermostat",
         "state_attributes": {
           "fan_mode": {
             "name": "Fan mode",
@@ -388,7 +388,7 @@
     },
     "switch": {
       "humidifier_enabled": {
-        "name": "{zone} humidifier enabled"
+        "name": "{zone} humidification enabled"
       }
     }
   },

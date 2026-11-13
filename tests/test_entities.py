@@ -328,7 +328,7 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(strips.native_value, 5)
         self.assertEqual(main.native_value, 1000)
         self.assertEqual(strips._attr_unique_id, "system:s:load:hp1:heat_strips_power")
-        self.assertEqual(self.label(strips), "Main heat strips power")
+        self.assertEqual(self.label(strips), "Main auxiliary heat power")
         self.system.energy["live"]["loads"]["hp1"]["heatStripsPowerW"] = 0
         self.assertEqual(strips.native_value, 0)
         del self.system.energy["live"]["loads"]["hp1"]["heatStripsPowerW"]
@@ -423,7 +423,7 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_climate_labels_preserve_numeric_fan_commands_and_error_translations(self):
         climate = self.climate.JetsonClimate(self.coordinator, self.zone)
-        self.assertEqual(self.label(climate, "climate", "es"), "Main")
+        self.assertEqual(self.label(climate, "climate", "es"), "Termostato de Main")
         self.assertEqual(climate.fan_modes, ["auto", "1", "2", "3"])
         await climate.async_set_fan_mode("2")
         self.assertEqual(self.commands, [("set_fan_speed", self.zone, 2)])
