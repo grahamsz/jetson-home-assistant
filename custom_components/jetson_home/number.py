@@ -4,7 +4,6 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .entity import JetsonEntity
@@ -36,7 +35,6 @@ async def async_setup_entry(
 class JetsonCirculationMinutes(JetsonEntity, NumberEntity):
     _attr_translation_key = "circulation_minutes"
     _attr_icon = "mdi:fan-clock"
-    _attr_entity_category = EntityCategory.CONFIG
     _attr_native_min_value = 0
     _attr_native_max_value = 60
     _attr_native_step = 1

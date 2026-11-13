@@ -49,3 +49,12 @@ Jetson's native schedule editor remains the place to edit its weekly programs, p
 ## Validation
 
 Protocol tests check methods, payloads, identifier encoding, input validation, expected responses, and failure handling. Model/entity/coordinator adapters check changing schedule targets while a command waits, unknown/missing schedule state, circulation-only writes, no automatic resume, no optimistic changes, offline/removal/auth guards, dynamic discovery, and translations. These do not replace a live HA or physical-control test. No commands were sent to the user's hardware while building this release.
+
+## Circulation control placement (0.9.1)
+
+Circulation per hour is now a primary control, not a configuration-category entity.
+It retains its entity ID and 0–60 minute range. The setting applies in Circulate
+mode; changing minutes does not change mode or speed. Fan speed remains available
+inside the thermostat card, without a duplicate selector. The Fan speed setting
+sensor remains for history; Actual fan speed is measured operation. Labels are
+localized into English, Spanish and French.

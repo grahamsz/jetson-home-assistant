@@ -301,6 +301,12 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
         await self.binary.async_setup_entry(None, self.entry, entities.extend)
         self.assertFalse(any(getattr(e, "equipment_id", None) == "hum1" for e in entities))
 
+    def test_circulation_minutes_is_a_primary_control(self):
+        minutes = self.number.JetsonCirculationMinutes(self.coordinator, self.zone)
+        self.assertIsNone(getattr(minutes, "_attr_entity_category", None))
+        self.assertEqual(minutes._attr_unique_id, "s:z:circulation_minutes")
+        self.assertEqual(self.label(minutes, "number"), "Main circulation per hour")
+
     def label(self, entity, domain="sensor", language="en"):
         # Check our translation metadata; HA itself is responsible for rendering it.
         self.assertFalse(hasattr(entity, "_attr_name"))

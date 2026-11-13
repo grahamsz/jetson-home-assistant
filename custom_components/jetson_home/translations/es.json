@@ -332,7 +332,7 @@
     },
     "number": {
       "circulation_minutes": {
-        "name": "{zone}: minutos de circulación por hora",
+        "name": "Circulación por hora de {zone}",
         "state_attributes": {
           "circulation_mode": {
             "name": "Modo de circulación",
