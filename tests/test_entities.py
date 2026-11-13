@@ -100,6 +100,7 @@ def adapters():
             "BinarySensorDeviceClass": SimpleNamespace(CONNECTIVITY="connectivity"),
         },
         "homeassistant.components.button": {"ButtonEntity": EntityAdapter},
+        "homeassistant.components.switch": {"SwitchEntity": EntityAdapter},
         "homeassistant.components.number": {
             "NumberEntity": EntityAdapter,
             "NumberMode": SimpleNamespace(BOX="box"),
@@ -155,6 +156,7 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
         self.binary = importlib.import_module("jetson_entity_contract.binary_sensor")
         self.climate = importlib.import_module("jetson_entity_contract.climate")
         self.humidifier = importlib.import_module("jetson_entity_contract.humidifier")
+        self.switch = importlib.import_module("jetson_entity_contract.switch")
         self.button = importlib.import_module("jetson_entity_contract.button")
         self.number = importlib.import_module("jetson_entity_contract.number")
         self.zone = models.Zone("s", "Home", "z", "Main", sample_status())
@@ -245,6 +247,59 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(humidifier.action)
         del self.zone.humidity["capabilities"]
         self.assertFalse(humidifier.available)
+
+    async def test_humidifier_absent_vs_disabled_and_activity(self):
+        capabilities = self.zone.humidity.pop("capabilities")
+        controls, switches, binaries = [], [], []
+        await self.humidifier.async_setup_entry(None, self.entry, controls.extend)
+        await self.switch.async_setup_entry(None, self.entry, switches.extend)
+        await self.binary.async_setup_entry(None, self.entry, binaries.extend)
+        self.assertEqual(controls, [])
+        self.assertEqual(switches, [])
+        self.assertFalse(any(isinstance(e, self.binary.JetsonHumidifying) for e in binaries))
+        self.zone.humidity["capabilities"] = capabilities
+        # Installed but seasonally disabled is still a controllable humidifier.
+        self.zone.humidity["settings"]["mode"] = "Off"
+        self.zone.humidity["status"] = "Off"
+        for callback in self.listeners:
+            callback()
+            callback()
+        self.assertEqual(len(controls), 1)
+        self.assertEqual(len(switches), 1)
+        activities = [e for e in binaries if isinstance(e, self.binary.JetsonHumidifying)]
+        self.assertEqual(len(activities), 1)
+        activity = activities[0]
+        switch = switches[0]
+        self.assertTrue(switch.available)
+        self.assertFalse(switch.is_on)
+        self.assertFalse(controls[0].is_on)
+        self.assertEqual(controls[0].target_humidity, 40)
+        self.assertFalse(activity.is_on)
+        await switch.async_turn_on()
+        self.assertEqual(self.commands[-1][-1], {"mode": "Humidify"})
+        self.assertFalse(switch.is_on)  # Wait for confirmed API state.
+        self.zone.humidity["settings"]["mode"] = "Humidify"
+        self.assertTrue(switch.is_on)
+        self.assertFalse(activity.is_on)  # Enabled and idle is not runtime.
+        self.zone.humidity["status"] = "Humidifying"
+        self.assertTrue(activity.is_on)
+        await switch.async_turn_off()
+        self.assertEqual(self.commands[-1][-1], {"mode": "Off"})
+        self.zone.humidity["status"] = "Unexpected"
+        self.assertIsNone(activity.is_on)
+        self.zone.humidity.pop("capabilities")
+        self.assertFalse(switch.available)
+        self.assertFalse(activity.available)
+        with self.assertRaises(LocalizedError):
+            await switch.async_turn_on()
+
+    async def test_no_unknown_relay_humidifier_connection(self):
+        self.system.equipment.append(
+            {"id": "hum1", "type": "Humidifier", "connectionStatus": "Unknown"}
+        )
+        entities = []
+        await self.binary.async_setup_entry(None, self.entry, entities.extend)
+        self.assertFalse(any(getattr(e, "equipment_id", None) == "hum1" for e in entities))
 
     def label(self, entity, domain="sensor", language="en"):
         # Check our translation metadata; HA itself is responsible for rendering it.

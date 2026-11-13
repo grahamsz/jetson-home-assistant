@@ -116,6 +116,59 @@ Consequently, this APK supports **verified humidifier-control code**, but it doe
 
 ## Home Assistant mapping
 
+### Installed, disabled, and active are different states (0.8.0)
+
+- **No advertised humidifier capability:** do not create the humidifier control,
+  enable switch, or activity binary sensor. RH measurement alone is insufficient.
+- **Installed and disabled:** capability remains present but `settings.mode` is
+  `Off`. Keep the controls and saved target visible; Humidifier enabled is off.
+- **Installed and enabled:** `settings.mode` is `Humidify`. Humidifier enabled is
+  on, even while the humidifier is idle. This switch uses the same mode setting as
+  the humidifier entity and Jetson app; it does not remove equipment configuration.
+- **Actually humidifying:** the Humidifier activity binary sensor is on only for
+  reported `status: Humidifying`. A reported `Off` status gives off; unexpected or
+  missing status is unknown. Offline devices and withdrawn capabilities make the
+  entity unavailable, not a fabricated off reading.
+
+The enable switch sends only mode, preserving the saved target. Target changes do
+not enable a seasonally disabled humidifier. All entities remain grouped under the
+existing system device, with zone names for multi-zone systems. Previously created
+entities become unavailable if capabilities disappear; their history is retained.
+
+Relay humidifiers may have `connectionStatus: Unknown` because they have no
+independent connection telemetry. Do not infer connectivity from enabled mode or
+humidification demand. Version 0.8.0 omits that diagnostic unless Connected or
+Disconnected is explicitly reported, and removes this entry's existing unknown
+humidifier connection record on configuration refresh/reload.
+
+### Hours of humidification per day
+
+Create a **History Stats** helper using the new Humidifier activity binary sensor,
+tracked state `on`, type `time`, start `{{ today_at('00:00') }}`, and end
+`{{ now() }}`. This reports hours since local midnight. For daily long-term totals,
+use state class `total_increasing`. See the official
+[History Stats documentation](https://www.home-assistant.io/integrations/history_stats/).
+
+Equivalent YAML (replace the illustrative entity ID with yours):
+
+```yaml
+sensor:
+  - platform: history_stats
+    name: Humidifier hours today
+    unique_id: jetson_humidifier_hours_today
+    entity_id: binary_sensor.main_humidifier_activity
+    state: "on"
+    type: time
+    start: "{{ today_at('00:00') }}"
+    end: "{{ now() }}"
+    state_class: total_increasing
+```
+
+Keep the activity entity included in Recorder. Tracking begins with available HA
+history; it cannot recover previous runtime or device activity during HA outages.
+Accuracy is limited by cloud updates and the configured polling interval. This
+measures reported humidification activity, not independently verified water flow.
+
 The prototype exposes an RH sensor whenever humidity telemetry is present. It creates a separate optional **humidifier entity** only when `Humidify` is advertised with valid min/max/precision values. That entity supports on/off, current RH, and target RH. It does not create a dehumidifier entity or claim that humidifier hardware is installed based on temperature or RH sensing alone.
 
 Setting a target does not implicitly enable humidification; enabling is a separate command. Commands are followed by polling. Live reading of a commissioned humidifier is confirmed above; Home Assistant writes and the physical response to those writes have not been tested on hardware.

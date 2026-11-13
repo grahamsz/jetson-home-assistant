@@ -191,6 +191,33 @@ class DeviceMigrationTests(unittest.TestCase):
         self.sync()
         self.assertEqual(self.entities.removed, ["sensor.my_custom_timestamp"])
 
+    def test_unknown_humidifier_connection_removed_only_for_own_entry(self):
+        self.snapshot.systems["s1"].equipment.append(
+            {"id": "hum1", "type": "Humidifier", "connectionStatus": "Unknown"}
+        )
+        for entity_id, settings in (
+            ("binary_sensor.hum", {}),
+            ("binary_sensor.other_account", {"config_entry_id": "other"}),
+            ("binary_sensor.other_platform", {"platform": "other"}),
+        ):
+            self.entities.entities[entity_id] = EntityRecord(
+                entity_id, "equipment:s1:hum1:connectivity", "root", **settings
+            )
+        self.sync()
+        self.assertEqual(self.entities.removed, ["binary_sensor.hum"])
+        self.assertIn("binary_sensor.other_account", self.entities.entities)
+        self.assertIn("binary_sensor.other_platform", self.entities.entities)
+
+    def test_reported_humidifier_connectivity_is_preserved(self):
+        self.snapshot.systems["s1"].equipment.append(
+            {"id": "hum1", "type": "Humidifier", "connectionStatus": "Connected"}
+        )
+        self.entities.entities["binary_sensor.hum"] = EntityRecord(
+            "binary_sensor.hum", "equipment:s1:hum1:connectivity", "root"
+        )
+        self.sync()
+        self.assertIn("binary_sensor.hum", self.entities.entities)
+
     def test_empty_discovery_does_not_remove_unknown_timestamp_records(self):
         self.entities.entities["sensor.timestamp"] = EntityRecord(
             "sensor.timestamp", "s1:z1:observed_at", "root"

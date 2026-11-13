@@ -21,6 +21,9 @@ async def async_setup_entry(
     def discover() -> None:
         entities = []
         for key, zone in coordinator.data.zones.items():
+            if (key, "humidifying") not in known and zone.supports_humidifier:
+                known.add((key, "humidifying"))
+                entities.append(JetsonHumidifying(coordinator, zone))
             if (key, "connection") not in known and "connectionStatus" in mapping(
                 zone.status.get("connectivity")
             ):
@@ -31,6 +34,12 @@ async def async_setup_entry(
                 entities.append(JetsonSchedulePaused(coordinator, zone))
         for system in coordinator.data.systems.values():
             for item in system.equipment:
+                # A relay accessory does not necessarily report connectivity.
+                if item.get("type") == "Humidifier" and item.get("connectionStatus") not in (
+                    "Connected",
+                    "Disconnected",
+                ):
+                    continue
                 key = equipment_identifier(system.system_id, item["id"])
                 if key not in known and item.get("connectionStatus") in (
                     "Unknown",
@@ -43,6 +52,26 @@ async def async_setup_entry(
 
     discover()
     entry.async_on_unload(coordinator.async_add_listener(discover))
+
+
+class JetsonHumidifying(JetsonEntity, BinarySensorEntity):
+    """Actual humidification demand, suitable for Recorder/history_stats."""
+
+    _attr_translation_key = "humidifying"
+    _attr_icon = "mdi:air-humidifier"
+
+    def __init__(self, coordinator, zone) -> None:
+        super().__init__(coordinator, zone)
+        self._attr_unique_id = f"{zone.key}:humidifying"
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.zone.supports_humidifier
+
+    @property
+    def is_on(self) -> bool | None:
+        status = self.zone.humidity.get("status")
+        return status == "Humidifying" if status in ("Off", "Humidifying") else None
 
 
 class JetsonSchedulePaused(JetsonEntity, BinarySensorEntity):

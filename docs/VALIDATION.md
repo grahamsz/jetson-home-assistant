@@ -1,5 +1,13 @@
 # Validation status and installation-day checks
 
+## Humidifier activity and seasonal disable (0.8.0)
+
+- **157 tests pass**, including no controls for absent humidifier capability versus visible controls for an installed disabled humidifier.
+- Verified activity is separate from enabled mode, unknown activity remains unknown, switch writes preserve the target, and entities become unavailable when capabilities are withdrawn.
+- Checked removal of this entry’s unknown humidifier connection record while preserving known connectivity and other accounts/integrations.
+- New switch and activity names are translated into English, Spanish, and French.
+- Daily runtime uses the documented Home Assistant History Stats helper; live Recorder/runtime accumulation remains to be checked in HA.
+
 ## Humidifier follow-up on November 13, 2026
 
 - **153 tests pass** after adding commissioned-humidifier discovery and control checks.

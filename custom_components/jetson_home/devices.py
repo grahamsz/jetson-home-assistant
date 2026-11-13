@@ -6,7 +6,13 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
-from .models import Snapshot, build_devices, device_aliases, system_for_legacy_identifier
+from .models import (
+    Snapshot,
+    build_devices,
+    device_aliases,
+    equipment_identifier,
+    system_for_legacy_identifier,
+)
 
 
 def sync_devices(
@@ -18,12 +24,24 @@ def sync_devices(
     # an unrecorded attribute on telemetry status; remove only this entry's exact
     # known-zone sensor records, including customized or disabled ones.
     retired = {f"{zone.key}:observed_at" for zone in snapshot.zones.values()}
+    retired_connections = {
+        f"{equipment_identifier(system.system_id, item['id'])}:connectivity"
+        for system in snapshot.systems.values()
+        for item in system.equipment
+        if item.get("type") == "Humidifier"
+        and item.get("connectionStatus") not in ("Connected", "Disconnected")
+    }
     for entity in tuple(er.async_entries_for_config_entry(entity_registry, entry.entry_id)):
         if (
             entity.config_entry_id == entry.entry_id
             and entity.platform == DOMAIN
-            and entity.entity_id.startswith("sensor.")
-            and entity.unique_id in retired
+            and (
+                (entity.entity_id.startswith("sensor.") and entity.unique_id in retired)
+                or (
+                    entity.entity_id.startswith("binary_sensor.")
+                    and entity.unique_id in retired_connections
+                )
+            )
         ):
             entity_registry.async_remove(entity.entity_id)
     registered = {}

@@ -320,6 +320,9 @@
             }
           }
         }
+      },
+      "humidifying": {
+        "name": "Actividad del humidificador de {zone}"
       }
     },
     "button": {
@@ -381,6 +384,11 @@
     "humidifier": {
       "humidifier": {
         "name": "{zone}: humidificador"
+      }
+    },
+    "switch": {
+      "humidifier_enabled": {
+        "name": "Humidificador de {zone} habilitado"
       }
     }
   },
