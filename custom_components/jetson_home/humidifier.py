@@ -57,6 +57,8 @@ class JetsonHumidifier(JetsonEntity, HumidifierEntity):
         if status == "Humidifying":
             return HumidifierAction.HUMIDIFYING
         if status == "Off":
+            if self.is_on is None:
+                return None
             return HumidifierAction.IDLE if self.is_on else HumidifierAction.OFF
         return None
 

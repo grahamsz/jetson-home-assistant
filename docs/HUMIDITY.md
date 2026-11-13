@@ -32,6 +32,44 @@ This example means enabled with a target of **45% RH**; it is an illustrative pa
 
 ## Fields to inspect after installation
 
+### Live confirmation on 2026-11-13
+
+After Jetson enabled the installed humidifier in the system configuration,
+`GET /v1/zones/{zoneId}/status` advertised `Humidify` and returned this humidity
+feature (account and device identifiers omitted):
+
+```json
+{
+  "status": "Humidifying",
+  "currentRelativeHumidity": 29.8,
+  "currentDisplayRelativeHumidity": 30,
+  "settings": {"mode": "Humidify", "setpoint": {"value": 40}},
+  "capabilities": {
+    "modes": ["Off", "Humidify"],
+    "setpoint": {"min": 20, "max": 50, "precision": 5}
+  }
+}
+```
+
+These limits describe this installation, not a universal range. The earlier
+response lacked capabilities; physical wiring alone had not enabled API control.
+No additional humidity read endpoint is necessary: zone status includes the current
+RH, target, enable mode, activity, and capabilities. Tested GET requests to
+`/humidity`, `/humidity/current`, and `/humidity/capabilities` returned 404;
+GET `/humidity/settings` returned 405 with `Allow: PATCH`. The PATCH contract
+above remains based on recovered app code and automated protocol tests; this
+investigation sent no live humidifier commands.
+
+Home Assistant discovers the existing optional humidifier entity on the next
+successful zone poll when these capabilities appear. Re-adding the account is
+unnecessary. If it does not appear, reload the integration and check for an
+existing disabled humidifier entity. Version 0.7.1 adds regression coverage for
+this response and rechecks current capability limits inside the command lock.
+Target requests are rounded to the advertised increment; turning on/off preserves
+the target, and setting a target does not implicitly turn on the humidifier.
+
+### Field reference
+
 Within `features.humidity`:
 
 | Field | Meaning |
@@ -80,7 +118,7 @@ Consequently, this APK supports **verified humidifier-control code**, but it doe
 
 The prototype exposes an RH sensor whenever humidity telemetry is present. It creates a separate optional **humidifier entity** only when `Humidify` is advertised with valid min/max/precision values. That entity supports on/off, current RH, and target RH. It does not create a dehumidifier entity or claim that humidifier hardware is installed based on temperature or RH sensing alone.
 
-Setting a target does not implicitly enable humidification; enabling is a separate command. Commands are followed by polling, and physical behavior remains unverified until installation.
+Setting a target does not implicitly enable humidification; enabling is a separate command. Commands are followed by polling. Live reading of a commissioned humidifier is confirmed above; Home Assistant writes and the physical response to those writes have not been tested on hardware.
 
 ## Exact local evidence
 

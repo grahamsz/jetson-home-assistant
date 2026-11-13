@@ -199,6 +199,53 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
             for language in ("en", "es", "fr")
         }
 
+    async def test_humidifier_discovered_after_jetson_enables_capabilities(self):
+        capabilities = self.zone.humidity.pop("capabilities")
+        entities = []
+        await self.humidifier.async_setup_entry(None, self.entry, entities.extend)
+        self.assertEqual(entities, [])
+        # Observed on a commissioned humidifier, 2026-11-13.
+        capabilities["setpoint"] = {"min": 20, "max": 50, "precision": 5}
+        self.zone.humidity.update(
+            capabilities=capabilities,
+            status="Humidifying",
+            currentRelativeHumidity=29.8,
+            settings={"mode": "Humidify", "setpoint": {"value": 40}},
+        )
+        for callback in self.listeners:
+            callback()
+            callback()
+        self.assertEqual(len(entities), 1)
+        humidifier = entities[0]
+        self.assertTrue(humidifier.available)
+        self.assertTrue(humidifier.is_on)
+        self.assertEqual(humidifier.action, "humidifying")
+        self.assertEqual(humidifier.current_humidity, 29.8)
+        self.assertEqual(humidifier.target_humidity, 40)
+        self.assertEqual(
+            (humidifier.min_humidity, humidifier.max_humidity, humidifier.target_humidity_step),
+            (20, 50, 5),
+        )
+        await humidifier.async_set_humidity(43)
+        self.assertEqual(
+            self.commands[-1], ("set_humidity_settings", self.zone, {"setpoint": {"value": 45}})
+        )
+        self.assertEqual(humidifier.target_humidity, 40)  # Never optimistic.
+        await humidifier.async_turn_off()
+        self.assertEqual(self.commands[-1][-1], {"mode": "Off"})
+        await humidifier.async_turn_on()
+        self.assertEqual(self.commands[-1][-1], {"mode": "Humidify"})
+        with self.assertRaises(LocalizedError):
+            await humidifier.async_set_humidity(51)
+        self.zone.humidity["status"] = "Off"
+        self.assertEqual(humidifier.action, "idle")
+        self.zone.humidity["settings"]["mode"] = "Off"
+        self.assertEqual(humidifier.action, "off")
+        del self.zone.humidity["settings"]["mode"]
+        self.assertIsNone(humidifier.action)
+        del self.zone.humidity["capabilities"]
+        self.assertFalse(humidifier.available)
+
     def label(self, entity, domain="sensor", language="en"):
         # Check our translation metadata; HA itself is responsible for rendering it.
         self.assertFalse(hasattr(entity, "_attr_name"))

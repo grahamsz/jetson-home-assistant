@@ -14,7 +14,7 @@ from .api import JetsonAuthError, JetsonClient, JetsonError
 from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .devices import sync_devices
 from .errors import user_error
-from .models import Snapshot, Zone
+from .models import Snapshot, Zone, mapping, number
 from .polling import JetsonPoller
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,6 +77,21 @@ class JetsonCoordinator(DataUpdateCoordinator[Snapshot]):
                     if current.circulation_minutes is None:
                         raise user_error("circulation_unavailable")
                     await self.client.set_circulation_duration(current.zone_id, value)
+                elif method == "set_humidity_settings":
+                    # Capabilities may change while this command waits for the lock.
+                    if not current.supports_humidifier:
+                        raise user_error("unsupported_humidifier")
+                    if "setpoint" in value:
+                        target = number(mapping(value["setpoint"]).get("value"))
+                        low = current.humidity_limits["min"]
+                        high = current.humidity_limits["max"]
+                        step = current.humidity_limits["precision"]
+                        if target is None or not low <= target <= high:
+                            raise user_error("humidity_out_of_range")
+                        steps = (target - low) / step
+                        if abs(steps - round(steps)) > 1e-6:
+                            raise user_error("rounded_humidity_out_of_range")
+                    await self.client.set_humidity_settings(current.zone_id, value)
                 else:
                     await getattr(self.client, method)(current.zone_id, value)
             except JetsonAuthError as err:

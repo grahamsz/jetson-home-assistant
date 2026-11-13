@@ -49,12 +49,40 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
         spec.loader.exec_module(loaded)
         self.entry = SimpleNamespace(options={}, async_start_reauth=Mock())
         self.client = SimpleNamespace(
-            resume_schedule=AsyncMock(), set_circulation_duration=AsyncMock()
+            resume_schedule=AsyncMock(),
+            set_circulation_duration=AsyncMock(),
+            set_humidity_settings=AsyncMock(),
         )
         self.coordinator = loaded.JetsonCoordinator(object(), self.entry, self.client)
         self.zone = models.Zone("s", "Home", "z", "Main", sample_status())
         self.zone.status["schedule"] = {"id": "old-id", "kind": "Weekly", "status": "Paused"}
         self.coordinator.data = models.Snapshot(zones={self.zone.key: self.zone})
+
+    async def test_humidity_rechecks_capabilities_after_waiting_for_lock(self):
+        await self.coordinator.command_lock.acquire()
+        task = asyncio.create_task(
+            self.coordinator.command("set_humidity_settings", self.zone, {"mode": "Humidify"})
+        )
+        await asyncio.sleep(0)
+        self.zone.humidity.pop("capabilities")
+        self.coordinator.command_lock.release()
+        with self.assertRaises(LocalizedError):
+            await task
+        self.client.set_humidity_settings.assert_not_awaited()
+
+    async def test_humidity_uses_current_limits_and_step(self):
+        self.zone.humidity_capabilities["setpoint"] = {"min": 20, "max": 50, "precision": 5}
+        for target in (55, 43):
+            with self.assertRaises(LocalizedError):
+                await self.coordinator.command(
+                    "set_humidity_settings", self.zone, {"setpoint": {"value": target}}
+                )
+        self.client.set_humidity_settings.assert_not_awaited()
+        await self.coordinator.command(
+            "set_humidity_settings", self.zone, {"setpoint": {"value": 45}}
+        )
+        self.client.set_humidity_settings.assert_awaited_once_with("z", {"setpoint": {"value": 45}})
+        self.assertEqual(self.coordinator.refreshes, 1)
 
     async def test_resume_targets_latest_schedule_after_waiting_for_command_lock(self):
         await self.coordinator.command_lock.acquire()

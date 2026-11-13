@@ -1,5 +1,17 @@
 # Validation status and installation-day checks
 
+## Humidifier follow-up on November 13, 2026
+
+- **153 tests pass** after adding commissioned-humidifier discovery and control checks.
+- Authorized live zone-status reads confirmed `Humidifying`, a 40% target, 29.8%
+  measured RH, and advertised target limits of 20–50% in 5-point increments.
+  Equipment inventory now includes a `Humidifier` with model `HUM-3P`.
+- Tests cover capabilities appearing after setup, duplicate prevention, activity
+  mapping, step rounding, separate on/off and target commands, no optimistic target
+  updates, and capability withdrawal while a command waits for the shared lock.
+- No live humidity PATCH was sent. End-to-end Home Assistant controls still require
+  comparison with the official app and physical humidifier.
+
 ## Completed on November 3–4, 2026
 
 - **150 passing tests** of the independent protocol client, data model, device grouping, polling scheduler, history-state mappings, registry consolidation, energy, newer telemetry, and air-quality freshness. Protocol requests run against a local HTTP mock service; migration tests use in-memory registry adapters.
