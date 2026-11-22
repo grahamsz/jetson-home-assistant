@@ -98,7 +98,8 @@
           "heating": "Calentando",
           "cooling": "Enfriando",
           "fan": "Ventilador en marcha",
-          "drying": "Deshumidificando"
+          "drying": "Deshumidificando",
+          "defrosting": "Descongelando"
         }
       },
       "fan_activity": {

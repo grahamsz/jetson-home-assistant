@@ -301,6 +301,29 @@ class EntityTests(unittest.IsolatedAsyncioTestCase):
         await self.binary.async_setup_entry(None, self.entry, entities.extend)
         self.assertFalse(any(getattr(e, "equipment_id", None) == "hum1" for e in entities))
 
+    def test_defrost_overrides_zone_activity_only_for_associated_indoor_unit(self):
+        sensor = self.sensor.JetsonStatusSensor(self.coordinator, self.zone, "hvac_activity")
+        hp = self.system.equipment[0]
+        hp.update(type="HeatPumpIdu", zoneIds=["z"])
+        operation = self.system.heatpump_status["hp1"]["operation"]
+        operation["defrosting"] = True
+        self.assertEqual(sensor.native_value, "defrosting")
+        self.zone.ambient["status"] = "Off"
+        self.assertEqual(sensor.native_value, "defrosting")
+        for value in (False, None, "true", 1):
+            operation["defrosting"] = value
+            self.assertEqual(sensor.native_value, "idle")
+        operation["defrosting"] = True
+        hp["zoneIds"] = ["another-zone"]
+        self.assertEqual(sensor.native_value, "idle")
+        self.zone.equipment_ids = ["hp1"]
+        self.assertEqual(sensor.native_value, "defrosting")
+        hp["type"] = "HeatPumpOdu"
+        self.assertEqual(sensor.native_value, "idle")
+        hp["type"] = "HeatPumpIdu"
+        self.system.heatpump_status.clear()
+        self.assertEqual(sensor.native_value, "idle")
+
     def test_circulation_minutes_is_a_primary_control(self):
         minutes = self.number.JetsonCirculationMinutes(self.coordinator, self.zone)
         self.assertIsNone(getattr(minutes, "_attr_entity_category", None))

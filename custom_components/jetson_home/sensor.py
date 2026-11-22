@@ -163,6 +163,22 @@ class JetsonStatusSensor(JetsonEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | None:
+        if self.kind == "hvac_activity":
+            system = self.coordinator.data.systems.get(self.zone.system_id)
+            if system is not None:
+                for equipment in system.equipment:
+                    if equipment.get("type") not in ("HeatPumpIdu", "HeatPump"):
+                        continue
+                    if not (
+                        equipment["id"] in self.zone.equipment_ids
+                        or self.zone.zone_id in (equipment.get("zoneIds") or [])
+                    ):
+                        continue
+                    operation = mapping(
+                        mapping(system.heatpump_status.get(equipment["id"])).get("operation")
+                    )
+                    if operation.get("defrosting") is True:
+                        return "defrosting"
         return getattr(self.zone, f"{self.kind}_state")
 
 

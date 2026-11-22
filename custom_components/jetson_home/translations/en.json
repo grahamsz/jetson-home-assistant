@@ -98,7 +98,8 @@
           "heating": "Heating",
           "cooling": "Cooling",
           "fan": "Fan running",
-          "drying": "Dehumidifying"
+          "drying": "Dehumidifying",
+          "defrosting": "Defrosting"
         }
       },
       "fan_activity": {

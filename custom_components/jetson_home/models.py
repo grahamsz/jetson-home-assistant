@@ -23,7 +23,7 @@ HVAC_ACTIVITY_STATES = {
 STATUS_SENSOR_OPTIONS = {
     "hvac_mode": tuple(HVAC_MODE_STATES.values()),
     "fan_mode": ("auto", "1", "2", "3"),
-    "hvac_activity": ("off", "idle", *HVAC_ACTIVITY_STATES.values()),
+    "hvac_activity": ("off", "idle", *HVAC_ACTIVITY_STATES.values(), "defrosting"),
     "fan_activity": ("off", "running"),
     "fan_speed": ("0", "1", "2", "3"),
 }

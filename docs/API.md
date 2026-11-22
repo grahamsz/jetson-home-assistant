@@ -385,3 +385,9 @@ The APK includes Espressif network/session security protobufs and an older `clou
 ## Reproduction and remaining validation
 
 See [RESEARCH.md](RESEARCH.md) for hashes, tooling, source locations, reconstruction limitations, and [VALIDATION.md](VALIDATION.md) for installation-day checks. The decisive missing evidence is an authenticated response from the user's commissioned equipment and comparison of a few ordinary commands with the official app.
+
+## Defrost observation, November 22, 2026
+
+The indoor `GET /v1/equipment/{equipmentId}/heatpump/status` response now includes a boolean `operation.defrosting`. A live transition to true was observed while operation and zone status still said Heating, followed by Off and stopped fan while the flag remained true. Therefore Heating/Off alone cannot identify defrost. The outdoor response in this observation contained health only.
+
+From integration 0.9.2, the existing zone heating/cooling activity sensor returns `defrosting` when a heat pump of type HeatPumpIdu or legacy HeatPump associated through zone equipment IDs or equipment zoneIds reports the exact boolean true. It does not apply unrelated-zone or outdoor flags. Missing, false or malformed flags fall back to ordinary zone activity. Optional failed equipment reads are cleared by the poller; stale flags from failed reads are not retained. This adds no requests or control writes and preserves the sensor identity/history. English, Spanish and French labels are provided. The climate entity itself retains its existing activity mapping.

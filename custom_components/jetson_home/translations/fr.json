@@ -98,7 +98,8 @@
           "heating": "Chauffage en cours",
           "cooling": "Climatisation en cours",
           "fan": "Ventilation en cours",
-          "drying": "Déshumidification en cours"
+          "drying": "Déshumidification en cours",
+          "defrosting": "Dégivrage"
         }
       },
       "fan_activity": {
